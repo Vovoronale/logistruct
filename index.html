@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logistruct | Project Engineering Organization</title>
+    <meta
+      name="description"
+      content="Logistruct designs and delivers complex logistics projects with engineering precision, visual clarity, and measurable outcomes."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+    <div class="noise-layer" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <a href="#hero" class="brand">
+        <span class="brand-mark">L/S</span>
+        <span class="brand-text">Logistruct</span>
+      </a>
+      <nav class="main-nav" aria-label="Main Navigation">
+        <a href="#projects">Projects</a>
+        <a href="#map">Map</a>
+        <a href="#team">Team</a>
+        <a href="#approach">Approach</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="hero" class="section hero-section">
+        <div class="hero-copy">
+          <p class="eyebrow">Project Engineering Organization</p>
+          <h1>
+            We shape
+            <span class="highlight">logistics systems</span>
+            that perform under pressure.
+          </h1>
+          <p class="lede">
+            Premium planning, real-world execution, and data-driven decisions
+            for complex industrial and infrastructure projects.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#projects">View Projects</a>
+            <a class="btn btn-ghost" href="#contact">Start a Conversation</a>
+          </div>
+        </div>
+
+        <div class="hero-metrics" aria-label="Performance Snapshot">
+          <article>
+            <p class="metric-value" data-count="32">32</p>
+            <p class="metric-label">Delivered Programs</p>
+          </article>
+          <article>
+            <p class="metric-value" data-count="14">14</p>
+            <p class="metric-label">Regions Coordinated</p>
+          </article>
+          <article>
+            <p class="metric-value" data-count="96">96</p>
+            <p class="metric-label">On-time Milestones %</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="projects" class="section">
+        <div class="section-head">
+          <p class="eyebrow">Selected Work</p>
+          <h2>Projects</h2>
+        </div>
+        <div class="project-grid">
+          <article class="project-card is-active" data-project="steel-hub" tabindex="0">
+            <p class="project-tag">Industrial</p>
+            <h3>Dnipro Steel Hub Rebuild</h3>
+            <p>
+              Reconfigured inbound and outbound flows with staged construction
+              phasing and zero downtime transfer windows.
+            </p>
+            <p class="project-meta">Dnipro Region • Completed</p>
+          </article>
+          <article class="project-card" data-project="river-terminal" tabindex="0">
+            <p class="project-tag">Infrastructure</p>
+            <h3>South River Terminal Upgrade</h3>
+            <p>
+              Introduced dynamic berth scheduling and resilient warehouse
+              geometry for seasonal volume surges.
+            </p>
+            <p class="project-meta">Odesa Region • Active</p>
+          </article>
+          <article class="project-card" data-project="grain-corridor" tabindex="0">
+            <p class="project-tag">Supply Chain</p>
+            <h3>Eastern Grain Corridor</h3>
+            <p>
+              Built a multi-node handoff model linking rail, storage, and road
+              dispatch with improved buffer stability.
+            </p>
+            <p class="project-meta">Kharkiv Region • Active</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="map" class="section">
+        <div class="section-head">
+          <p class="eyebrow">Geography Narrative</p>
+          <h2>Story Map</h2>
+        </div>
+        <div class="map-shell">
+          <svg
+            id="story-map"
+            viewBox="0 0 860 420"
+            role="img"
+            aria-label="Project map showing active delivery corridors"
+          >
+            <defs>
+              <linearGradient id="route-gradient" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0%" stop-color="#2bd2bb" />
+                <stop offset="100%" stop-color="#ffcf66" />
+              </linearGradient>
+            </defs>
+            <rect class="map-bg" x="0" y="0" width="860" height="420" rx="24" />
+            <g class="region-shape">
+              <path
+                d="M94 320 L190 102 L370 80 L525 130 L702 94 L760 220 L654 330 L420 350 L232 366 Z"
+              />
+            </g>
+            <g class="routes">
+              <path
+                class="route"
+                data-route="steel-hub|river-terminal"
+                d="M245 240 C320 200, 440 210, 530 250"
+              />
+              <path
+                class="route"
+                data-route="river-terminal|grain-corridor"
+                d="M530 250 C585 228, 650 196, 705 166"
+              />
+              <path
+                class="route"
+                data-route="steel-hub|grain-corridor"
+                d="M245 240 C360 152, 540 128, 705 166"
+              />
+            </g>
+            <g class="map-nodes">
+              <g class="node is-active" data-project="steel-hub" transform="translate(245 240)">
+                <circle class="pulse" r="18"></circle>
+                <circle class="core" r="6"></circle>
+                <text x="18" y="-12">Dnipro Steel Hub</text>
+              </g>
+              <g class="node" data-project="river-terminal" transform="translate(530 250)">
+                <circle class="pulse" r="18"></circle>
+                <circle class="core" r="6"></circle>
+                <text x="18" y="-12">South River Terminal</text>
+              </g>
+              <g class="node" data-project="grain-corridor" transform="translate(705 166)">
+                <circle class="pulse" r="18"></circle>
+                <circle class="core" r="6"></circle>
+                <text x="18" y="-12">Eastern Grain Corridor</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </section>
+
+      <section id="team" class="section">
+        <div class="section-head">
+          <p class="eyebrow">People</p>
+          <h2>Team</h2>
+        </div>
+        <div class="team-grid">
+          <article>
+            <h3>Olha Koval</h3>
+            <p class="role">Lead Systems Architect</p>
+            <p>Designs resilient logistics topology for phased infrastructure delivery.</p>
+          </article>
+          <article>
+            <h3>Dmytro Honchar</h3>
+            <p class="role">Construction Program Lead</p>
+            <p>Coordinates multi-contractor execution with high-risk dependency control.</p>
+          </article>
+          <article>
+            <h3>Iryna Melnyk</h3>
+            <p class="role">Data and Operations Analyst</p>
+            <p>Builds planning models that connect forecast variance to field decisions.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="approach" class="section">
+        <div class="section-head">
+          <p class="eyebrow">Method</p>
+          <h2>Approach</h2>
+        </div>
+        <ol class="approach-list">
+          <li>
+            <h3>Context Mapping</h3>
+            <p>We model constraints, bottlenecks, and operational priorities before design starts.</p>
+          </li>
+          <li>
+            <h3>Parametric Design</h3>
+            <p>Layouts and capacities are tuned through variable-driven iterations and stress tests.</p>
+          </li>
+          <li>
+            <h3>Execution Control</h3>
+            <p>Field sequencing and supplier windows are synchronized with measurable checkpoints.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section id="contact" class="section contact-section">
+        <div>
+          <p class="eyebrow">Contact</p>
+          <h2>Let’s scope your next program.</h2>
+          <p>
+            Send your project context and current constraints. We will return a
+            focused response with milestones, risks, and decision options.
+          </p>
+        </div>
+        <a class="btn btn-primary" href="mailto:hello@logistruct.com">
+          hello@logistruct.com
+        </a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Logistruct • Engineering precision for logistics systems.</p>
+      <p>&copy; <span id="year"></span> Logistruct.</p>
+    </footer>
+
+    <script src="assets/app.js" defer></script>
+  </body>
+</html>
