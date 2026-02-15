@@ -1,0 +1,14 @@
+{
+  "templates": [
+    {
+      "id": "bridge",
+      "src": "assets/structures/bridge.svg",
+      "fallbackId": "bridge"
+    },
+    {
+      "id": "industrial_frame",
+      "src": "assets/structures/industrial_frame.svg",
+      "fallbackId": "industrial_frame"
+    }
+  ]
+}
