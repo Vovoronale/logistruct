@@ -191,6 +191,7 @@ test("architecture docs mention phase engine, vector ingest, and reduced policy"
   const doc04 = read("docs/architecture/04-animation-engine-canvas2d.md");
   const doc08 = read("docs/architecture/08-performance-budget.md");
   const doc09 = read("docs/architecture/09-accessibility-and-motion.md");
+  const adr02 = read("docs/decisions/ADR-002-animation-strategy.md");
 
   assert.ok(
     doc04.includes("BuildPhase"),
@@ -228,6 +229,22 @@ test("architecture docs mention phase engine, vector ingest, and reduced policy"
     doc09.includes("no rebuild") || doc09.includes("no-rebuild"),
     "Reduced-motion no-rebuild behavior must be documented in 09"
   );
+  assert.ok(
+    doc04.includes("Appearance") && doc04.includes("Animation") && doc04.includes("Group Interaction"),
+    "04 must document bgTest tab groups for diagnostics"
+  );
+  assert.ok(
+    doc08.includes("tabbed") || doc08.includes("tabs"),
+    "08 must document tabbed debug UI constraints for bgTest"
+  );
+  assert.ok(
+    doc09.includes("tab") && doc09.includes("keyboard"),
+    "09 must document keyboard-accessible tab behavior in bgTest"
+  );
+  assert.ok(
+    adr02.includes("tabbed") || adr02.includes("tabs"),
+    "ADR-002 must mention tabbed bgTest diagnostics surface"
+  );
 });
 
 test("styles define design system primitives", () => {
@@ -263,8 +280,13 @@ test("styles restore legacy grid visibility and remove overlay mask", () => {
   const css = read("assets/styles.css");
   assert.match(
     css,
-    /\.noise-layer\s*\{[\s\S]*opacity:\s*0\.46\b/,
-    "Legacy grid opacity (0.46) must be restored"
+    /--bg-grid-opacity:\s*0\.46\b/,
+    "Legacy grid opacity baseline (0.46) must be restored in CSS variables"
+  );
+  assert.match(
+    css,
+    /\.noise-layer\s*\{[\s\S]*opacity:\s*var\(--bg-grid-opacity\)/,
+    "noise-layer opacity must be controlled via bg grid opacity variable"
   );
   assert.ok(
     !css.includes(".noise-layer::before"),
@@ -289,6 +311,12 @@ test("styles define clean background-only viewport for bgTest mode", () => {
 test("runtime script includes bgTest control panel and live debug actions", () => {
   const js = read("assets/app.js");
   assert.ok(js.includes("bg-test-controls"), "bgTest control panel id must exist in runtime");
+  assert.ok(js.includes("role=\"tablist\""), "bgTest panel must render a tablist");
+  assert.ok(js.includes("role=\"tabpanel\""), "bgTest panel must render tab panels");
+  assert.ok(js.includes("aria-selected"), "bgTest tabs must expose aria-selected");
+  assert.ok(js.includes("appearance"), "bgTest tabs must include appearance section");
+  assert.ok(js.includes("animation"), "bgTest tabs must include animation section");
+  assert.ok(js.includes("interaction"), "bgTest tabs must include interaction section");
   assert.ok(js.includes("Pause"), "Pause control for bgTest panel is required");
   assert.ok(js.includes("Resume"), "Resume control for bgTest panel is required");
   assert.ok(js.includes("Reset"), "Reset preset for bgTest panel is required");
@@ -299,6 +327,15 @@ test("runtime script includes bgTest control panel and live debug actions", () =
     js.includes("applyDebugOverrides"),
     "Runtime must expose applyDebugOverrides hook for bgTest controls"
   );
+});
+
+test("runtime script includes appearance and group interaction debug keys", () => {
+  const js = read("assets/app.js");
+  assert.ok(js.includes("boundPointColor"), "Appearance key boundPointColor is required");
+  assert.ok(js.includes("gridOpacity"), "Appearance key gridOpacity is required");
+  assert.ok(js.includes("boundBoundStrength"), "Group interaction key boundBoundStrength is required");
+  assert.ok(js.includes("freeBoundGateScale"), "Group interaction key freeBoundGateScale is required");
+  assert.ok(js.includes("clusterAdjacencySpan"), "Group interaction key clusterAdjacencySpan is required");
 });
 
 test("runtime script keeps bgTest sliders session-only", () => {
@@ -315,4 +352,15 @@ test("runtime script keeps bgTest sliders session-only", () => {
     !js.includes("history.replaceState") && !js.includes("history.pushState"),
     "bgTest controls must not sync tuning values into URL history"
   );
+});
+
+test("styles include tabbed bgTest controls and tunable grid variables", () => {
+  const css = read("assets/styles.css");
+  assert.ok(css.includes("--bg-grid-rgb"), "Grid color CSS variable is required");
+  assert.ok(css.includes("--bg-grid-opacity"), "Grid opacity CSS variable is required");
+  assert.ok(css.includes("--bg-grid-size"), "Grid size CSS variable is required");
+  assert.ok(css.includes(".bg-test-tabs"), "Tabbed control styles are required");
+  assert.ok(css.includes(".bg-test-tab"), "Tab button styles are required");
+  assert.ok(css.includes(".bg-test-panel"), "Tab panel styles are required");
+  assert.ok(css.includes(".bg-test-panel[hidden]"), "Hidden tab panel style is required");
 });

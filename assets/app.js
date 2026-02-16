@@ -155,6 +155,28 @@ const REBUILD_WAVE_WINDOWS = {
   braces: [0.62, 0.95],
 };
 
+const DEFAULT_DEBUG_VISUAL_STATE = {
+  boundPointColor: "#b8e7f4",
+  freePointColor: "#93c1d3",
+  topologyLinkColor: "#65b9d2",
+  freeLinkColor: "#7aadc0",
+  crossLinkColor: "#6aa5ba",
+  gridColor: "#ffffff",
+  pointSizeScale: 1,
+  linkWidthPx: 1,
+  gridOpacity: 0.46,
+  gridSizePx: 34,
+  gradientAlphaScale: 1,
+};
+
+const DEFAULT_DEBUG_INTERACTION_STATE = {
+  boundBoundStrength: 1,
+  freeFreeStrength: 1,
+  freeBoundStrength: 1,
+  freeBoundGateScale: 1,
+  clusterAdjacencySpan: 1,
+};
+
 function getMotionProfile() {
   if (prefersReduced.matches) return "reduced";
   const cores = navigator.hardwareConcurrency || 4;
@@ -166,6 +188,39 @@ function getMotionProfile() {
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
+}
+
+function normalizeHexColor(value, fallback = "#ffffff") {
+  const fallbackNorm = /^#([0-9a-f]{6})$/i.test(fallback) ? fallback.toLowerCase() : "#ffffff";
+  if (typeof value !== "string") return fallbackNorm;
+  const raw = value.trim();
+  const short = /^#([0-9a-f]{3})$/i.exec(raw);
+  if (short) {
+    const [r, g, b] = short[1].split("");
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  const full = /^#([0-9a-f]{6})$/i.exec(raw);
+  if (full) return `#${full[1].toLowerCase()}`;
+  return fallbackNorm;
+}
+
+function hexToRgbTuple(hexColor, fallback = "#ffffff") {
+  const hex = normalizeHexColor(hexColor, fallback).slice(1);
+  return [
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16),
+  ];
+}
+
+function hexToRgbComma(hexColor, fallback = "#ffffff") {
+  const [r, g, b] = hexToRgbTuple(hexColor, fallback);
+  return `${r}, ${g}, ${b}`;
+}
+
+function hexToRgbSpace(hexColor, fallback = "#ffffff") {
+  const [r, g, b] = hexToRgbTuple(hexColor, fallback);
+  return `${r} ${g} ${b}`;
 }
 
 function easeInOutSine(t) {
@@ -190,8 +245,8 @@ function clusterFromX(x) {
   return "4";
 }
 
-function isClusterAdjacent(a, b) {
-  return Math.abs(Number(a) - Number(b)) <= 1;
+function isClusterAdjacent(a, b, span = 1) {
+  return Math.abs(Number(a) - Number(b)) <= Math.max(0, Math.floor(span));
 }
 
 function hashPair(a, b) {
@@ -330,6 +385,24 @@ function initBackground(canvasEl, config, initialTemplates) {
   };
   const defaultProfileState = cloneDeep(profileConfig);
   const defaultStructureState = cloneDeep(config.structureMode);
+  const defaultVisualState = cloneDeep(DEFAULT_DEBUG_VISUAL_STATE);
+  const defaultInteractionState = cloneDeep(DEFAULT_DEBUG_INTERACTION_STATE);
+  const debugVisualState = cloneDeep(DEFAULT_DEBUG_VISUAL_STATE);
+  const debugInteractionState = cloneDeep(DEFAULT_DEBUG_INTERACTION_STATE);
+
+  function applyGridDebugVars() {
+    const root = document.documentElement;
+    root.style.setProperty("--bg-grid-rgb", hexToRgbSpace(debugVisualState.gridColor, "#ffffff"));
+    root.style.setProperty("--bg-grid-opacity", String(clamp(debugVisualState.gridOpacity, 0, 1)));
+    root.style.setProperty(
+      "--bg-grid-size",
+      `${Math.round(clamp(debugVisualState.gridSizePx, 12, 96))}px`
+    );
+  }
+
+  function lineWidthWithScale() {
+    return clamp(debugVisualState.linkWidthPx, 0.4, 3);
+  }
 
   function nextTemplateId(currentId) {
     const index = templateOrder.indexOf(currentId);
@@ -815,6 +888,13 @@ function initBackground(canvasEl, config, initialTemplates) {
     const lookup = buildBoundLookup(useTargetAnchors);
     const edgeList = useTargetAnchors ? structureState.nextTopologyEdges : structureState.topologyEdges;
     if (!edgeList.length) return;
+    const clusterSpan = debugInteractionState.clusterAdjacencySpan;
+    const boundStrength = clamp(debugInteractionState.boundBoundStrength, 0, 2);
+    const topologyRgb = hexToRgbComma(
+      debugVisualState.topologyLinkColor,
+      defaultVisualState.topologyLinkColor
+    );
+    const lineWidth = lineWidthWithScale();
 
     const capBase = mode.topologyEdgeCapByProfile[profile] || 120;
     const stageFactor = densityState.stage >= 3 ? 0.56 : densityState.stage === 2 ? 0.74 : 1;
@@ -842,7 +922,7 @@ function initBackground(canvasEl, config, initialTemplates) {
 
       const a = particles[fromIndex];
       const b = particles[toIndex];
-      if (!isClusterAdjacent(a.cluster, b.cluster)) continue;
+      if (!isClusterAdjacent(a.cluster, b.cluster, clusterSpan)) continue;
 
       const dx = a.x - b.x;
       const dy = a.y - b.y;
@@ -853,12 +933,13 @@ function initBackground(canvasEl, config, initialTemplates) {
       const focusB = getFocusInfluence(b.x, b.y);
       let alpha = (0.058 + edge.strength * 0.084 + (focusA + focusB) * 0.08) * phaseFactor;
       alpha *= visibility;
+      alpha *= boundStrength;
       if (SECONDARY_LAYERS.has(edge.layer)) alpha *= 0.72;
       alpha = Math.min(mode.alphaCap, alpha);
 
       context.beginPath();
-      context.strokeStyle = `rgba(101, 185, 210, ${alpha.toFixed(3)})`;
-      context.lineWidth = 1;
+      context.strokeStyle = `rgba(${topologyRgb}, ${alpha.toFixed(3)})`;
+      context.lineWidth = lineWidth;
       context.moveTo(a.x, a.y);
       context.lineTo(b.x, b.y);
       context.stroke();
@@ -874,6 +955,13 @@ function initBackground(canvasEl, config, initialTemplates) {
       return;
     }
 
+    const clusterSpan = debugInteractionState.clusterAdjacencySpan;
+    const boundStrength = clamp(debugInteractionState.boundBoundStrength, 0, 2);
+    const topologyRgb = hexToRgbComma(
+      debugVisualState.topologyLinkColor,
+      defaultVisualState.topologyLinkColor
+    );
+    const lineWidth = lineWidthWithScale();
     const linkCounts = new Array(particles.length).fill(0);
     const linkCap = Math.max(1, Math.min(2, mode.maxLinksPerParticle - 3));
 
@@ -886,7 +974,7 @@ function initBackground(canvasEl, config, initialTemplates) {
         if (linkCounts[i] >= linkCap) break;
         if (linkCounts[j] >= linkCap) continue;
         const b = particles[j];
-        if (!isClusterAdjacent(a.cluster, b.cluster)) continue;
+        if (!isClusterAdjacent(a.cluster, b.cluster, clusterSpan)) continue;
 
         const dx = a.x - b.x;
         const dy = a.y - b.y;
@@ -894,10 +982,10 @@ function initBackground(canvasEl, config, initialTemplates) {
         const maxDist = cfg.linkDistance * 0.74;
         if (dist >= maxDist) continue;
 
-        const alpha = Math.min(0.09, (1 - dist / maxDist) * 0.06);
+        const alpha = Math.min(0.09, (1 - dist / maxDist) * 0.06 * boundStrength);
         context.beginPath();
-        context.strokeStyle = `rgba(94, 162, 187, ${alpha.toFixed(3)})`;
-        context.lineWidth = 1;
+        context.strokeStyle = `rgba(${topologyRgb}, ${alpha.toFixed(3)})`;
+        context.lineWidth = lineWidth;
         context.moveTo(a.x, a.y);
         context.lineTo(b.x, b.y);
         context.stroke();
@@ -914,8 +1002,11 @@ function initBackground(canvasEl, config, initialTemplates) {
 
   function drawFreeLinks(freeIndices, mode) {
     const phaseScale = freePhaseScale();
+    const freeStrength = clamp(debugInteractionState.freeFreeStrength, 0, 2);
     const weakDistance = mode.freeParticles.weakLinkDistance * (phaseState.phase === "hold" ? 1 : 0.86);
-    const weakAlphaCap = mode.freeParticles.weakAlphaCap * phaseScale;
+    const weakAlphaCap = Math.min(mode.alphaCap, mode.freeParticles.weakAlphaCap * phaseScale * freeStrength);
+    const freeRgb = hexToRgbComma(debugVisualState.freeLinkColor, defaultVisualState.freeLinkColor);
+    const lineWidth = lineWidthWithScale();
 
     for (let ii = 0; ii < freeIndices.length; ii += 1) {
       const i = freeIndices[ii];
@@ -930,8 +1021,8 @@ function initBackground(canvasEl, config, initialTemplates) {
         if (dist >= weakDistance) continue;
         const alpha = Math.min(weakAlphaCap, (1 - dist / weakDistance) * weakAlphaCap);
         context.beginPath();
-        context.strokeStyle = `rgba(122, 173, 192, ${alpha.toFixed(3)})`;
-        context.lineWidth = 1;
+        context.strokeStyle = `rgba(${freeRgb}, ${alpha.toFixed(3)})`;
+        context.lineWidth = lineWidth;
         context.moveTo(a.x, a.y);
         context.lineTo(b.x, b.y);
         context.stroke();
@@ -942,9 +1033,16 @@ function initBackground(canvasEl, config, initialTemplates) {
 
   function drawWeakFreeToBoundLinks(freeIndices, boundIndices, mode) {
     const phaseScale = freePhaseScale();
+    const crossStrength = clamp(debugInteractionState.freeBoundStrength, 0, 2);
+    const clusterSpan = debugInteractionState.clusterAdjacencySpan;
     const weakDistance = mode.freeParticles.weakLinkDistance * 0.9;
-    const weakAlphaCap = mode.freeParticles.weakAlphaCap * 0.68 * phaseScale;
-    const gate = 0.22 * phaseScale;
+    const weakAlphaCap = Math.min(
+      mode.alphaCap,
+      mode.freeParticles.weakAlphaCap * 0.68 * phaseScale * crossStrength
+    );
+    const gate = clamp(0.22 * phaseScale * debugInteractionState.freeBoundGateScale, 0, 1);
+    const crossRgb = hexToRgbComma(debugVisualState.crossLinkColor, defaultVisualState.crossLinkColor);
+    const lineWidth = lineWidthWithScale();
 
     for (let ii = 0; ii < freeIndices.length; ii += 1) {
       if (ii % 3 !== 0) continue;
@@ -955,7 +1053,7 @@ function initBackground(canvasEl, config, initialTemplates) {
       let nearestDist = Number.POSITIVE_INFINITY;
       for (let jj = 0; jj < boundIndices.length; jj += 1) {
         const boundParticle = particles[boundIndices[jj]];
-        if (!isClusterAdjacent(freeParticle.cluster, boundParticle.cluster)) continue;
+        if (!isClusterAdjacent(freeParticle.cluster, boundParticle.cluster, clusterSpan)) continue;
         const dx = freeParticle.x - boundParticle.x;
         const dy = freeParticle.y - boundParticle.y;
         const dist = Math.hypot(dx, dy);
@@ -968,8 +1066,8 @@ function initBackground(canvasEl, config, initialTemplates) {
 
       const alpha = Math.min(weakAlphaCap, (1 - nearestDist / weakDistance) * weakAlphaCap);
       context.beginPath();
-      context.strokeStyle = `rgba(106, 165, 186, ${alpha.toFixed(3)})`;
-      context.lineWidth = 1;
+      context.strokeStyle = `rgba(${crossRgb}, ${alpha.toFixed(3)})`;
+      context.lineWidth = lineWidth;
       context.moveTo(freeParticle.x, freeParticle.y);
       context.lineTo(nearest.x, nearest.y);
       context.stroke();
@@ -979,14 +1077,23 @@ function initBackground(canvasEl, config, initialTemplates) {
   function drawPoints(boundIndices, freeIndices) {
     const visibility = structureVisibility();
     const freePointScale = phaseState.phase === "hold" ? 1 : 0.86;
+    const pointSizeScale = clamp(debugVisualState.pointSizeScale, 0.4, 2.8);
+    const boundRgb = hexToRgbComma(debugVisualState.boundPointColor, defaultVisualState.boundPointColor);
+    const freeRgb = hexToRgbComma(debugVisualState.freePointColor, defaultVisualState.freePointColor);
 
     boundIndices.forEach((index) => {
       const p = particles[index];
       const focus = getFocusInfluence(p.x, p.y);
       const alpha = (0.52 + focus * 0.36) * visibility;
       context.beginPath();
-      context.fillStyle = `rgba(184, 231, 244, ${alpha.toFixed(3)})`;
-      context.arc(p.x, p.y, p.radius + focus * 0.85, 0, Math.PI * 2);
+      context.fillStyle = `rgba(${boundRgb}, ${alpha.toFixed(3)})`;
+      context.arc(
+        p.x,
+        p.y,
+        (p.radius + focus * 0.85) * pointSizeScale,
+        0,
+        Math.PI * 2
+      );
       context.fill();
     });
 
@@ -995,8 +1102,8 @@ function initBackground(canvasEl, config, initialTemplates) {
       const focus = getFocusInfluence(p.x, p.y);
       const alpha = (0.28 + focus * 0.08) * freePointScale;
       context.beginPath();
-      context.fillStyle = `rgba(147, 193, 211, ${alpha.toFixed(3)})`;
-      context.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      context.fillStyle = `rgba(${freeRgb}, ${alpha.toFixed(3)})`;
+      context.arc(p.x, p.y, p.radius * pointSizeScale, 0, Math.PI * 2);
       context.fill();
     });
   }
@@ -1004,11 +1111,14 @@ function initBackground(canvasEl, config, initialTemplates) {
   function drawFrame() {
     const cfg = profileConfig[profile];
     const mode = config.structureMode;
+    const gradientAlphaScale = clamp(debugVisualState.gradientAlphaScale, 0, 2);
+    const gradientStartAlpha = (0.09 * gradientAlphaScale).toFixed(3);
+    const gradientEndAlpha = (0.05 * gradientAlphaScale).toFixed(3);
 
     context.clearRect(0, 0, window.innerWidth, window.innerHeight);
     const gradient = context.createLinearGradient(0, 0, window.innerWidth, window.innerHeight);
-    gradient.addColorStop(0, "rgba(43, 210, 187, 0.09)");
-    gradient.addColorStop(1, "rgba(255, 207, 102, 0.05)");
+    gradient.addColorStop(0, `rgba(43, 210, 187, ${gradientStartAlpha})`);
+    gradient.addColorStop(1, `rgba(255, 207, 102, ${gradientEndAlpha})`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
@@ -1091,6 +1201,16 @@ function initBackground(canvasEl, config, initialTemplates) {
     const mode = config.structureMode;
     const sampling = mode.sampling;
     let geometryDirty = false;
+    let gridDirty = false;
+
+    const colorKeys = [
+      "boundPointColor",
+      "freePointColor",
+      "topologyLinkColor",
+      "freeLinkColor",
+      "crossLinkColor",
+      "gridColor",
+    ];
 
     const numberKeys = [
       "particleCount",
@@ -1110,7 +1230,25 @@ function initBackground(canvasEl, config, initialTemplates) {
       "sampleStepPx",
       "stitchMaxEdges",
       "stitchMaxDistance",
+      "pointSizeScale",
+      "linkWidthPx",
+      "gridOpacity",
+      "gridSizePx",
+      "gradientAlphaScale",
+      "boundBoundStrength",
+      "freeFreeStrength",
+      "freeBoundStrength",
+      "freeBoundGateScale",
+      "clusterAdjacencySpan",
     ];
+
+    for (const key of colorKeys) {
+      if (!(key in overrides)) continue;
+      const fallback = defaultVisualState[key] || "#ffffff";
+      const normalized = normalizeHexColor(String(overrides[key] ?? ""), fallback);
+      debugVisualState[key] = normalized;
+      if (key === "gridColor") gridDirty = true;
+    }
 
     for (const key of numberKeys) {
       if (!(key in overrides)) continue;
@@ -1158,8 +1296,32 @@ function initBackground(canvasEl, config, initialTemplates) {
       } else if (key === "stitchMaxDistance") {
         sampling.stitchMaxDistanceNxyByProfile[profile] = clamp(value, 0.01, 0.4);
         geometryDirty = true;
+      } else if (key === "pointSizeScale") {
+        debugVisualState.pointSizeScale = clamp(value, 0.4, 2.8);
+      } else if (key === "linkWidthPx") {
+        debugVisualState.linkWidthPx = clamp(value, 0.4, 3);
+      } else if (key === "gridOpacity") {
+        debugVisualState.gridOpacity = clamp(value, 0, 1);
+        gridDirty = true;
+      } else if (key === "gridSizePx") {
+        debugVisualState.gridSizePx = clamp(value, 12, 96);
+        gridDirty = true;
+      } else if (key === "gradientAlphaScale") {
+        debugVisualState.gradientAlphaScale = clamp(value, 0, 2);
+      } else if (key === "boundBoundStrength") {
+        debugInteractionState.boundBoundStrength = clamp(value, 0, 2);
+      } else if (key === "freeFreeStrength") {
+        debugInteractionState.freeFreeStrength = clamp(value, 0, 2);
+      } else if (key === "freeBoundStrength") {
+        debugInteractionState.freeBoundStrength = clamp(value, 0, 2);
+      } else if (key === "freeBoundGateScale") {
+        debugInteractionState.freeBoundGateScale = clamp(value, 0, 2);
+      } else if (key === "clusterAdjacencySpan") {
+        debugInteractionState.clusterAdjacencySpan = Math.floor(clamp(value, 0, 4));
       }
     }
+
+    if (gridDirty) applyGridDebugVars();
 
     if (geometryDirty) {
       rebuildAnchors();
@@ -1212,6 +1374,9 @@ function initBackground(canvasEl, config, initialTemplates) {
       defaultStructureState.freeParticles.weakAlphaCap;
     config.structureMode.sampling.stitchingEnabled =
       defaultStructureState.sampling.stitchingEnabled;
+    Object.assign(debugVisualState, cloneDeep(defaultVisualState));
+    Object.assign(debugInteractionState, cloneDeep(defaultInteractionState));
+    applyGridDebugVars();
     setQuality(getMotionProfile());
   }
 
@@ -1238,6 +1403,22 @@ function initBackground(canvasEl, config, initialTemplates) {
       sampleStepPx: mode.sampling.sampleStepPxByProfile[profile] || 10,
       stitchMaxEdges: mode.sampling.stitchMaxEdgesByProfile[profile] || 0,
       stitchMaxDistance: mode.sampling.stitchMaxDistanceNxyByProfile[profile] || 0,
+      boundPointColor: debugVisualState.boundPointColor,
+      freePointColor: debugVisualState.freePointColor,
+      topologyLinkColor: debugVisualState.topologyLinkColor,
+      freeLinkColor: debugVisualState.freeLinkColor,
+      crossLinkColor: debugVisualState.crossLinkColor,
+      gridColor: debugVisualState.gridColor,
+      pointSizeScale: debugVisualState.pointSizeScale,
+      linkWidthPx: debugVisualState.linkWidthPx,
+      gridOpacity: debugVisualState.gridOpacity,
+      gridSizePx: debugVisualState.gridSizePx,
+      gradientAlphaScale: debugVisualState.gradientAlphaScale,
+      boundBoundStrength: debugInteractionState.boundBoundStrength,
+      freeFreeStrength: debugInteractionState.freeFreeStrength,
+      freeBoundStrength: debugInteractionState.freeBoundStrength,
+      freeBoundGateScale: debugInteractionState.freeBoundGateScale,
+      clusterAdjacencySpan: debugInteractionState.clusterAdjacencySpan,
     };
   }
 
@@ -1273,6 +1454,7 @@ function initBackground(canvasEl, config, initialTemplates) {
     prefersReduced.removeEventListener("change", handleMotionPreferenceChange);
   }
 
+  applyGridDebugVars();
   resizeCanvas();
   rebuildAnchors();
   createParticles();
@@ -1348,32 +1530,284 @@ function setupBackgroundTestControls(backgroundEngine) {
   const state = backgroundEngine.getDebugState();
   if (!state) return;
 
+  const tabs = [
+    { id: "appearance", label: "Appearance" },
+    { id: "animation", label: "Animation" },
+    { id: "interaction", label: "Group Interaction" },
+  ];
+
   const controls = [
-    { key: "particleCount", label: "Particles", min: 24, max: 220, step: 1 },
-    { key: "freeRatio", label: "Free Ratio", min: 0.05, max: 0.5, step: 0.01 },
-    { key: "linkDistance", label: "Link Distance", min: 50, max: 220, step: 1 },
-    { key: "driftSpeed", label: "Drift Speed", min: 0.01, max: 0.5, step: 0.005 },
-    { key: "spring", label: "Spring", min: 0.001, max: 0.06, step: 0.001 },
-    { key: "damping", label: "Damping", min: 0.8, max: 0.995, step: 0.001 },
-    { key: "noise", label: "Noise", min: 0, max: 0.3, step: 0.005 },
-    { key: "fps", label: "FPS Target", min: 8, max: 60, step: 1 },
-    { key: "reactionRadiusPx", label: "Reaction Radius", min: 60, max: 360, step: 1 },
-    { key: "topologyEdgeCap", label: "Topology Edge Cap", min: 16, max: 260, step: 1 },
-    { key: "maxLinksPerParticle", label: "Max Links/Point", min: 1, max: 10, step: 1 },
-    { key: "alphaCap", label: "Alpha Cap", min: 0.01, max: 0.6, step: 0.005 },
-    { key: "weakLinkDistance", label: "Weak Link Distance", min: 20, max: 220, step: 1 },
-    { key: "weakAlphaCap", label: "Weak Alpha Cap", min: 0.005, max: 0.3, step: 0.005 },
-    { key: "sampleStepPx", label: "Sample Step", min: 4, max: 20, step: 1 },
-    { key: "stitchMaxEdges", label: "Stitch Max Edges", min: 0, max: 10, step: 1 },
-    { key: "stitchMaxDistance", label: "Stitch Max Dist", min: 0.01, max: 0.25, step: 0.005 },
+    { tab: "appearance", key: "boundPointColor", label: "Bound Color", type: "color" },
+    { tab: "appearance", key: "freePointColor", label: "Free Color", type: "color" },
+    { tab: "appearance", key: "topologyLinkColor", label: "Topology Color", type: "color" },
+    { tab: "appearance", key: "freeLinkColor", label: "Free Link Color", type: "color" },
+    { tab: "appearance", key: "crossLinkColor", label: "Cross Link Color", type: "color" },
+    { tab: "appearance", key: "gridColor", label: "Grid Color", type: "color" },
+    {
+      tab: "appearance",
+      key: "pointSizeScale",
+      label: "Point Scale",
+      type: "range",
+      min: 0.4,
+      max: 2.8,
+      step: 0.01,
+    },
+    {
+      tab: "appearance",
+      key: "linkWidthPx",
+      label: "Link Width",
+      type: "range",
+      min: 0.4,
+      max: 3,
+      step: 0.05,
+    },
+    {
+      tab: "appearance",
+      key: "gridOpacity",
+      label: "Grid Opacity",
+      type: "range",
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      tab: "appearance",
+      key: "gridSizePx",
+      label: "Grid Size",
+      type: "range",
+      min: 12,
+      max: 96,
+      step: 1,
+    },
+    {
+      tab: "appearance",
+      key: "gradientAlphaScale",
+      label: "Gradient Alpha",
+      type: "range",
+      min: 0,
+      max: 2,
+      step: 0.01,
+    },
+    {
+      tab: "animation",
+      key: "particleCount",
+      label: "Particles",
+      type: "range",
+      min: 24,
+      max: 220,
+      step: 1,
+    },
+    {
+      tab: "animation",
+      key: "freeRatio",
+      label: "Free Ratio",
+      type: "range",
+      min: 0.05,
+      max: 0.5,
+      step: 0.01,
+    },
+    {
+      tab: "animation",
+      key: "driftSpeed",
+      label: "Drift Speed",
+      type: "range",
+      min: 0.01,
+      max: 0.5,
+      step: 0.005,
+    },
+    {
+      tab: "animation",
+      key: "spring",
+      label: "Spring",
+      type: "range",
+      min: 0.001,
+      max: 0.06,
+      step: 0.001,
+    },
+    {
+      tab: "animation",
+      key: "damping",
+      label: "Damping",
+      type: "range",
+      min: 0.8,
+      max: 0.995,
+      step: 0.001,
+    },
+    { tab: "animation", key: "noise", label: "Noise", type: "range", min: 0, max: 0.3, step: 0.005 },
+    { tab: "animation", key: "fps", label: "FPS Target", type: "range", min: 8, max: 60, step: 1 },
+    {
+      tab: "animation",
+      key: "sampleStepPx",
+      label: "Sample Step",
+      type: "range",
+      min: 4,
+      max: 20,
+      step: 1,
+    },
+    {
+      tab: "animation",
+      key: "stitchMaxEdges",
+      label: "Stitch Max Edges",
+      type: "range",
+      min: 0,
+      max: 10,
+      step: 1,
+    },
+    {
+      tab: "animation",
+      key: "stitchMaxDistance",
+      label: "Stitch Max Dist",
+      type: "range",
+      min: 0.01,
+      max: 0.25,
+      step: 0.005,
+    },
+    {
+      tab: "interaction",
+      key: "linkDistance",
+      label: "Link Distance",
+      type: "range",
+      min: 50,
+      max: 220,
+      step: 1,
+    },
+    {
+      tab: "interaction",
+      key: "reactionRadiusPx",
+      label: "Reaction Radius",
+      type: "range",
+      min: 60,
+      max: 360,
+      step: 1,
+    },
+    {
+      tab: "interaction",
+      key: "topologyEdgeCap",
+      label: "Topology Edge Cap",
+      type: "range",
+      min: 16,
+      max: 260,
+      step: 1,
+    },
+    {
+      tab: "interaction",
+      key: "maxLinksPerParticle",
+      label: "Max Links/Point",
+      type: "range",
+      min: 1,
+      max: 10,
+      step: 1,
+    },
+    {
+      tab: "interaction",
+      key: "alphaCap",
+      label: "Alpha Cap",
+      type: "range",
+      min: 0.01,
+      max: 0.6,
+      step: 0.005,
+    },
+    {
+      tab: "interaction",
+      key: "weakLinkDistance",
+      label: "Weak Link Distance",
+      type: "range",
+      min: 20,
+      max: 220,
+      step: 1,
+    },
+    {
+      tab: "interaction",
+      key: "weakAlphaCap",
+      label: "Weak Alpha Cap",
+      type: "range",
+      min: 0.005,
+      max: 0.3,
+      step: 0.005,
+    },
+    {
+      tab: "interaction",
+      key: "boundBoundStrength",
+      label: "Bound-Bound Strength",
+      type: "range",
+      min: 0,
+      max: 2,
+      step: 0.01,
+    },
+    {
+      tab: "interaction",
+      key: "freeFreeStrength",
+      label: "Free-Free Strength",
+      type: "range",
+      min: 0,
+      max: 2,
+      step: 0.01,
+    },
+    {
+      tab: "interaction",
+      key: "freeBoundStrength",
+      label: "Free-Bound Strength",
+      type: "range",
+      min: 0,
+      max: 2,
+      step: 0.01,
+    },
+    {
+      tab: "interaction",
+      key: "freeBoundGateScale",
+      label: "Free-Bound Gate",
+      type: "range",
+      min: 0,
+      max: 2,
+      step: 0.01,
+    },
+    {
+      tab: "interaction",
+      key: "clusterAdjacencySpan",
+      label: "Cluster Span",
+      type: "range",
+      min: 0,
+      max: 4,
+      step: 1,
+    },
   ];
 
   const panel = document.createElement("aside");
   panel.id = "bg-test-controls";
   panel.setAttribute("aria-label", "Background test controls");
+  const tabButtonsHtml = tabs
+    .map(
+      (tab, index) => `
+      <button
+        type="button"
+        class="bg-test-tab"
+        role="tab"
+        id="bg-tab-${tab.id}"
+        data-tab="${tab.id}"
+        aria-controls="bg-panel-${tab.id}"
+        aria-selected="${index === 0 ? "true" : "false"}"
+        tabindex="${index === 0 ? "0" : "-1"}"
+      >${tab.label}</button>
+    `
+    )
+    .join("");
+  const tabPanelsHtml = tabs
+    .map(
+      (tab, index) => `
+      <section
+        class="bg-test-panel"
+        role="tabpanel"
+        id="bg-panel-${tab.id}"
+        aria-labelledby="bg-tab-${tab.id}"
+        ${index === 0 ? "" : "hidden"}
+      ></section>
+    `
+    )
+    .join("");
+
   panel.innerHTML = `
     <h2>bgTest Controls</h2>
-    <p class="bg-test-subtitle">Live tuning for particle structure</p>
+    <p class="bg-test-subtitle">Live tuning for appearance, animation and interaction</p>
     <div class="bg-test-presets" role="group" aria-label="Quality presets">
       <button type="button" data-preset="high">High</button>
       <button type="button" data-preset="medium">Medium</button>
@@ -1381,32 +1815,107 @@ function setupBackgroundTestControls(backgroundEngine) {
       <button type="button" data-action="reset">Reset</button>
       <button type="button" data-action="pause">Pause</button>
     </div>
-    <div class="bg-test-controls-list"></div>
+    <div class="bg-test-tabs" role="tablist" aria-label="Control tabs">
+      ${tabButtonsHtml}
+    </div>
+    ${tabPanelsHtml}
   `;
   document.body.appendChild(panel);
 
-  const listEl = panel.querySelector(".bg-test-controls-list");
+  const tabButtons = Array.from(panel.querySelectorAll(".bg-test-tab"));
+  const tabPanels = Array.from(panel.querySelectorAll(".bg-test-panel"));
+  const panelByTab = new Map();
+  tabPanels.forEach((node) => {
+    const id = node.id.replace("bg-panel-", "");
+    panelByTab.set(id, node);
+  });
   const controlMap = new Map();
+  let activeTab = tabs[0].id;
+
+  function decimalPlaces(step) {
+    const text = String(step);
+    const dot = text.indexOf(".");
+    return dot < 0 ? 0 : text.length - dot - 1;
+  }
+
+  function setTab(nextTab, focus = false) {
+    activeTab = tabs.some((tab) => tab.id === nextTab) ? nextTab : tabs[0].id;
+    tabButtons.forEach((button) => {
+      const selected = button.dataset.tab === activeTab;
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+      button.tabIndex = selected ? 0 : -1;
+      if (selected && focus) button.focus();
+    });
+    tabPanels.forEach((tabPanel) => {
+      tabPanel.hidden = tabPanel.id !== `bg-panel-${activeTab}`;
+    });
+  }
+
+  function updateOutput(entry, value) {
+    if (entry.control.type === "color") {
+      entry.output.textContent = normalizeHexColor(String(value || "#ffffff")).toUpperCase();
+      return;
+    }
+    const number = Number(value);
+    if (!Number.isFinite(number)) return;
+    entry.output.textContent = number.toFixed(decimalPlaces(entry.control.step || 1));
+  }
 
   controls.forEach((control) => {
     const row = document.createElement("label");
     row.className = "bg-test-control-row";
-    row.innerHTML = `
-      <span class="bg-test-control-name">${control.label}</span>
-      <input type="range" min="${control.min}" max="${control.max}" step="${control.step}" />
-      <output></output>
-    `;
+    if (control.type === "color") {
+      row.innerHTML = `
+        <span class="bg-test-control-name">${control.label}</span>
+        <input type="color" />
+        <output></output>
+      `;
+    } else {
+      row.innerHTML = `
+        <span class="bg-test-control-name">${control.label}</span>
+        <input type="range" min="${control.min}" max="${control.max}" step="${control.step}" />
+        <output></output>
+      `;
+    }
     const input = row.querySelector("input");
     const output = row.querySelector("output");
+    if (!input || !output) return;
     input.addEventListener("input", () => {
-      const value = Number(input.value);
+      const value =
+        control.type === "color"
+          ? normalizeHexColor(input.value)
+          : Number(input.value);
       backgroundEngine.applyDebugOverrides({ [control.key]: value });
       const snapshot = backgroundEngine.getDebugState();
       const display = snapshot ? snapshot[control.key] : value;
-      output.textContent = Number(display).toFixed(control.step < 1 ? 3 : 0);
+      if (control.type === "color") {
+        input.value = normalizeHexColor(String(display), "#ffffff");
+      }
+      updateOutput({ control, output }, display);
     });
     controlMap.set(control.key, { input, output, control });
-    listEl?.appendChild(row);
+    panelByTab.get(control.tab)?.appendChild(row);
+  });
+
+  tabButtons.forEach((button, index) => {
+    button.addEventListener("click", () => setTab(button.dataset.tab || tabs[0].id));
+    button.addEventListener("keydown", (event) => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % tabButtons.length;
+      if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabButtons.length - 1;
+      if (nextIndex != null) {
+        event.preventDefault();
+        const nextButton = tabButtons[nextIndex];
+        if (nextButton) setTab(nextButton.dataset.tab || tabs[0].id, true);
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setTab(button.dataset.tab || tabs[0].id, true);
+      }
+    });
   });
 
   const pauseButton = panel.querySelector('button[data-action="pause"]');
@@ -1420,10 +1929,16 @@ function setupBackgroundTestControls(backgroundEngine) {
     const snapshot = backgroundEngine.getDebugState();
     if (!snapshot) return;
     controlMap.forEach((entry, key) => {
+      if (entry.control.type === "color") {
+        const color = normalizeHexColor(String(snapshot[key] || "#ffffff"), "#ffffff");
+        entry.input.value = color;
+        updateOutput(entry, color);
+        return;
+      }
       const value = Number(snapshot[key]);
       if (!Number.isFinite(value)) return;
       entry.input.value = String(value);
-      entry.output.textContent = value.toFixed(entry.control.step < 1 ? 3 : 0);
+      updateOutput(entry, value);
     });
     syncPauseLabel();
   }
@@ -1448,6 +1963,7 @@ function setupBackgroundTestControls(backgroundEngine) {
     syncPauseLabel();
   });
 
+  setTab(activeTab);
   syncFromState();
 }
 
