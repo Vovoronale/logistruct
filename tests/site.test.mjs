@@ -236,3 +236,52 @@ test("styles define design system primitives", () => {
   assert.ok(css.includes("--bg"), "Background color token is required");
   assert.ok(css.includes("@keyframes"), "Animation keyframes are required");
 });
+
+test("runtime script supports bgTest mode toggle via URL query", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("URLSearchParams(window.location.search)"),
+    "bgTest mode must read query params from window.location.search"
+  );
+  assert.ok(js.includes("bgTest"), "bgTest query key handling is required");
+  assert.ok(
+    js.includes('classList.toggle("is-bg-test"'),
+    "bgTest mode must toggle is-bg-test class on body"
+  );
+});
+
+test("runtime script skips non-background UI setup in bgTest mode", () => {
+  const js = read("assets/app.js");
+  assert.match(
+    js,
+    /if\s*\(\s*!backgroundTestMode\s*\)\s*\{[\s\S]*setupMapInteractions\(engine\);[\s\S]*animateCounters\(\);[\s\S]*setYear\(\);[\s\S]*\}/,
+    "bgTest mode must guard non-background UI setup"
+  );
+});
+
+test("styles restore legacy grid visibility and remove overlay mask", () => {
+  const css = read("assets/styles.css");
+  assert.match(
+    css,
+    /\.noise-layer\s*\{[\s\S]*opacity:\s*0\.46\b/,
+    "Legacy grid opacity (0.46) must be restored"
+  );
+  assert.ok(
+    !css.includes(".noise-layer::before"),
+    "noise-layer overlay mask should be removed to restore visible square grid"
+  );
+});
+
+test("styles define clean background-only viewport for bgTest mode", () => {
+  const css = read("assets/styles.css");
+  assert.match(
+    css,
+    /body\.is-bg-test\s*\{[\s\S]*overflow:\s*hidden/,
+    "bgTest mode must disable page scrolling"
+  );
+  assert.match(
+    css,
+    /body\.is-bg-test\s+\.site-header,\s*body\.is-bg-test\s+main,\s*body\.is-bg-test\s+\.site-footer\s*\{[\s\S]*display:\s*none/,
+    "bgTest mode must hide foreground content containers"
+  );
+});

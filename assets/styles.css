@@ -12,9 +12,6 @@
   --radius: 18px;
   --shadow: 0 16px 40px rgba(0, 0, 0, 0.34);
   --max-width: 1120px;
-  --bg-structure-mask-a: rgba(3, 9, 15, 0.76);
-  --bg-structure-mask-b: rgba(6, 17, 26, 0.46);
-  --bg-structure-mask-c: rgba(6, 18, 27, 0.16);
 }
 
 *,
@@ -56,19 +53,19 @@ body {
     linear-gradient(transparent 97%, rgba(255, 255, 255, 0.035) 100%),
     linear-gradient(90deg, transparent 97%, rgba(255, 255, 255, 0.03) 100%);
   background-size: 34px 34px;
-  opacity: 0.24;
+  opacity: 0.46;
   pointer-events: none;
   animation: drift-grid 18s linear infinite;
 }
 
-.noise-layer::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 18% 18%, var(--bg-structure-mask-a) 0%, var(--bg-structure-mask-b) 38%, var(--bg-structure-mask-c) 76%),
-    radial-gradient(circle at 82% 58%, rgba(8, 21, 31, 0.56) 0%, rgba(7, 19, 29, 0.14) 64%),
-    linear-gradient(180deg, rgba(2, 8, 13, 0.35) 0%, rgba(2, 8, 13, 0.08) 38%, rgba(2, 8, 13, 0.3) 100%);
+body.is-bg-test {
+  overflow: hidden;
+}
+
+body.is-bg-test .site-header,
+body.is-bg-test main,
+body.is-bg-test .site-footer {
+  display: none;
 }
 
 .site-header {

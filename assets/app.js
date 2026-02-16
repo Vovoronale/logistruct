@@ -11,6 +11,16 @@ import {
 const canvas = document.getElementById("bg-canvas");
 const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+function isBackgroundTestMode() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("bgTest") === "1";
+}
+
+function applyBackgroundTestMode(enabled) {
+  if (!document.body) return;
+  document.body.classList.toggle("is-bg-test", enabled);
+}
+
 const profileConfig = {
   high: {
     particleCount: 124,
@@ -1137,13 +1147,18 @@ function setYear() {
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 }
 
-async function bootstrapBackground() {
+async function bootstrapBackground(backgroundTestMode = false) {
   const templates = await loadVectorTemplatesWithFallback();
   const engine = initBackground(canvas, engineConfig, templates);
   engine.setQuality(getMotionProfile());
-  setupMapInteractions(engine);
+
+  if (!backgroundTestMode) {
+    setupMapInteractions(engine);
+    animateCounters();
+    setYear();
+  }
 }
 
-bootstrapBackground();
-animateCounters();
-setYear();
+const backgroundTestMode = isBackgroundTestMode();
+applyBackgroundTestMode(backgroundTestMode);
+bootstrapBackground(backgroundTestMode);
