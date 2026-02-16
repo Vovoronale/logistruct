@@ -33,6 +33,44 @@ function getPointById(template, id) {
   return template.points.find((point) => point.id === id) || null;
 }
 
+function countByLayer(points) {
+  const map = new Map();
+  points.forEach((point) => {
+    map.set(point.layer, (map.get(point.layer) || 0) + 1);
+  });
+  return map;
+}
+
+function connectedComponentSizes(template) {
+  const pointMap = new Map(template.points.map((point) => [point.id, point]));
+  const adjacency = new Map(template.points.map((point) => [point.id, new Set()]));
+  template.lineHints.forEach((hint) => {
+    if (!pointMap.has(hint.from) || !pointMap.has(hint.to)) return;
+    adjacency.get(hint.from).add(hint.to);
+    adjacency.get(hint.to).add(hint.from);
+  });
+
+  const seen = new Set();
+  const sizes = [];
+  for (const point of template.points) {
+    if (seen.has(point.id)) continue;
+    const stack = [point.id];
+    seen.add(point.id);
+    let size = 0;
+    while (stack.length) {
+      const current = stack.pop();
+      size += 1;
+      for (const next of adjacency.get(current) || []) {
+        if (seen.has(next)) continue;
+        seen.add(next);
+        stack.push(next);
+      }
+    }
+    sizes.push(size);
+  }
+  return sizes.sort((a, b) => b - a);
+}
+
 function assertValidTemplate(template, templateId) {
   assert.ok(template.points.length > 0, `${templateId} points are empty`);
   assert.ok(template.lineHints.length > 0, `${templateId} lineHints are empty`);
@@ -195,4 +233,84 @@ test("downsample keeps non-empty core connectivity", async () => {
   });
 
   assert.ok(coreEdges.length > 0, "core connectivity disappeared after downsample");
+});
+
+test("downsample keeps target density and avoids single-point secondary layers", async () => {
+  const bridgeSvg = read("assets/structures/bridge.svg");
+  const parsed = await loadSvgTemplate(
+    { id: "bridge", src: "assets/structures/bridge.svg" },
+    { sampleStepPx: 10 },
+    async () => ({
+      ok: true,
+      async text() {
+        return bridgeSvg;
+      },
+    })
+  );
+
+  const target = 88;
+  const sampled = downsampleTemplateForProfile(parsed, "high", {
+    targetPointCount: target,
+    sampleStepPxByProfile: { high: 10, medium: 11, low: 13, reduced: 14 },
+    minLayerShare: {
+      foundation: 0.15,
+      supports: 0.2,
+      beams: 0.22,
+      truss: 0.1,
+      braces: 0.12,
+      roof: 0.1,
+    },
+    preserveConnectivity: true,
+    stitchingEnabled: true,
+    stitchMaxEdgesByProfile: { high: 4, medium: 3, low: 2, reduced: 1 },
+    stitchMaxDistanceNxyByProfile: { high: 0.09, medium: 0.085, low: 0.08, reduced: 0.075 },
+  });
+
+  assert.ok(
+    sampled.points.length >= Math.floor(target * 0.85),
+    "downsample dropped too many points compared to target"
+  );
+  const layerCounts = countByLayer(sampled.points);
+  assert.ok((layerCounts.get("truss") || 0) >= 2, "truss layer must keep at least 2 points");
+  assert.ok((layerCounts.get("braces") || 0) >= 2, "braces layer must keep at least 2 points");
+});
+
+test("downsample stitching forms a dominant connected component", async () => {
+  const industrialSvg = read("assets/structures/industrial_frame.svg");
+  const parsed = await loadSvgTemplate(
+    { id: "industrial_frame", src: "assets/structures/industrial_frame.svg" },
+    { sampleStepPx: 10 },
+    async () => ({
+      ok: true,
+      async text() {
+        return industrialSvg;
+      },
+    })
+  );
+
+  const sampled = downsampleTemplateForProfile(parsed, "high", {
+    targetPointCount: 88,
+    sampleStepPxByProfile: { high: 10, medium: 11, low: 13, reduced: 14 },
+    minLayerShare: {
+      foundation: 0.15,
+      supports: 0.2,
+      beams: 0.22,
+      truss: 0.1,
+      braces: 0.12,
+      roof: 0.1,
+    },
+    preserveConnectivity: true,
+    stitchingEnabled: true,
+    stitchMaxEdgesByProfile: { high: 4, medium: 3, low: 2, reduced: 1 },
+    stitchMaxDistanceNxyByProfile: { high: 0.09, medium: 0.085, low: 0.08, reduced: 0.075 },
+  });
+
+  const sizes = connectedComponentSizes(sampled);
+  assert.ok(sizes.length > 0, "component metrics must not be empty");
+  const largest = sizes[0] || 0;
+  const second = sizes[1] || 0;
+  assert.ok(
+    largest >= Math.max(12, second + 3),
+    "largest component should dominate over the second component"
+  );
 });

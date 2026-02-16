@@ -136,16 +136,16 @@ test("runtime script includes free particle profile ratios", () => {
   const js = read("assets/app.js");
   assert.ok(js.includes("ratioByProfile"), "ratioByProfile config is required");
   assert.ok(
-    /high:\s*0\.35/.test(js),
-    "Expected free ratio high = 0.35"
+    /high:\s*0\.3\b/.test(js),
+    "Expected free ratio high = 0.30"
   );
   assert.ok(
-    /medium:\s*0\.3/.test(js),
-    "Expected free ratio medium = 0.30"
+    /medium:\s*0\.25/.test(js),
+    "Expected free ratio medium = 0.25"
   );
   assert.ok(
-    /low:\s*0\.2/.test(js),
-    "Expected free ratio low = 0.20"
+    /low:\s*0\.18/.test(js),
+    "Expected free ratio low = 0.18"
   );
   assert.ok(
     /reduced:\s*0\.2/.test(js),
@@ -283,5 +283,36 @@ test("styles define clean background-only viewport for bgTest mode", () => {
     css,
     /body\.is-bg-test\s+\.site-header,\s*body\.is-bg-test\s+main,\s*body\.is-bg-test\s+\.site-footer\s*\{[\s\S]*display:\s*none/,
     "bgTest mode must hide foreground content containers"
+  );
+});
+
+test("runtime script includes bgTest control panel and live debug actions", () => {
+  const js = read("assets/app.js");
+  assert.ok(js.includes("bg-test-controls"), "bgTest control panel id must exist in runtime");
+  assert.ok(js.includes("Pause"), "Pause control for bgTest panel is required");
+  assert.ok(js.includes("Resume"), "Resume control for bgTest panel is required");
+  assert.ok(js.includes("Reset"), "Reset preset for bgTest panel is required");
+  assert.ok(js.includes("High"), "High preset for bgTest panel is required");
+  assert.ok(js.includes("Medium"), "Medium preset for bgTest panel is required");
+  assert.ok(js.includes("Low"), "Low preset for bgTest panel is required");
+  assert.ok(
+    js.includes("applyDebugOverrides"),
+    "Runtime must expose applyDebugOverrides hook for bgTest controls"
+  );
+});
+
+test("runtime script keeps bgTest sliders session-only", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    !js.includes("localStorage"),
+    "bgTest controls must not persist settings to localStorage"
+  );
+  assert.ok(
+    !js.includes("sessionStorage"),
+    "bgTest controls must not persist settings to sessionStorage"
+  );
+  assert.ok(
+    !js.includes("history.replaceState") && !js.includes("history.pushState"),
+    "bgTest controls must not sync tuning values into URL history"
   );
 });

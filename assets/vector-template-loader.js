@@ -32,6 +32,19 @@ const DEFAULT_SAMPLING_CONFIG = {
     roof: 0.1,
   },
   preserveConnectivity: true,
+  stitchingEnabled: true,
+  stitchMaxEdgesByProfile: {
+    high: 4,
+    medium: 3,
+    low: 2,
+    reduced: 1,
+  },
+  stitchMaxDistanceNxyByProfile: {
+    high: 0.09,
+    medium: 0.085,
+    low: 0.08,
+    reduced: 0.075,
+  },
 };
 
 function getAttr(attrs, name) {
@@ -345,6 +358,7 @@ export function parseSvgToTemplate(svgText, options = {}) {
     const ny = clamp01((point.y - minY) / height);
     return {
       id: `anchor-${index}`,
+      sourceIndex: index,
       nx,
       ny,
       layer: point.layer,
@@ -394,16 +408,28 @@ function normalizeSamplingConfig(config = {}) {
       typeof config.preserveConnectivity === "boolean"
         ? config.preserveConnectivity
         : DEFAULT_SAMPLING_CONFIG.preserveConnectivity,
+    stitchingEnabled:
+      typeof config.stitchingEnabled === "boolean"
+        ? config.stitchingEnabled
+        : DEFAULT_SAMPLING_CONFIG.stitchingEnabled,
+    stitchMaxEdgesByProfile: {
+      ...DEFAULT_SAMPLING_CONFIG.stitchMaxEdgesByProfile,
+      ...(config.stitchMaxEdgesByProfile || {}),
+    },
+    stitchMaxDistanceNxyByProfile: {
+      ...DEFAULT_SAMPLING_CONFIG.stitchMaxDistanceNxyByProfile,
+      ...(config.stitchMaxDistanceNxyByProfile || {}),
+    },
   };
 }
 
-function buildDegreeMap(lineHints) {
-  const degree = new Map();
-  lineHints.forEach((hint) => {
-    degree.set(hint.from, (degree.get(hint.from) || 0) + 1);
-    degree.set(hint.to, (degree.get(hint.to) || 0) + 1);
-  });
-  return degree;
+function pointSortIndex(point) {
+  if (Number.isFinite(point.sourceIndex)) return point.sourceIndex;
+  if (typeof point.id === "string") {
+    const suffix = Number(point.id.replace(/^anchor-/, ""));
+    if (Number.isFinite(suffix)) return suffix;
+  }
+  return stableHash(point.id || "");
 }
 
 function filterValidLineHints(lineHints, pointIds) {
@@ -420,19 +446,25 @@ function filterValidLineHints(lineHints, pointIds) {
   return valid;
 }
 
+function sortPointsBySource(points) {
+  return points.slice().sort((a, b) => pointSortIndex(a) - pointSortIndex(b));
+}
+
 function buildLayerQuotas(pointsByLayer, targetPointCount, minLayerShare) {
   const layers = Object.keys(pointsByLayer);
   const quotas = new Map();
   if (!layers.length) return quotas;
 
+  const minimumPerLayer = targetPointCount >= layers.length * 2 ? 2 : 1;
+  const minimumByLayer = new Map();
   let assigned = 0;
   layers.forEach((layer) => {
     const available = pointsByLayer[layer].length;
     const minShare = minLayerShare[layer] || 0;
-    const quota = Math.min(
-      available,
-      Math.max(1, Math.floor(targetPointCount * minShare))
-    );
+    const base = Math.floor(targetPointCount * minShare);
+    const minQuota = Math.min(available, minimumPerLayer);
+    const quota = Math.min(available, Math.max(minQuota, base));
+    minimumByLayer.set(layer, minQuota);
     quotas.set(layer, quota);
     assigned += quota;
   });
@@ -443,7 +475,8 @@ function buildLayerQuotas(pointsByLayer, targetPointCount, minLayerShare) {
       .map((layer) => ({ layer, quota: quotas.get(layer) || 0 }))
       .sort((a, b) => b.quota - a.quota);
     for (const entry of sortable) {
-      if ((quotas.get(entry.layer) || 0) > 1) {
+      const minQuota = minimumByLayer.get(entry.layer) || 1;
+      if ((quotas.get(entry.layer) || 0) > minQuota) {
         quotas.set(entry.layer, (quotas.get(entry.layer) || 0) - 1);
         assigned -= 1;
         reduced = true;
@@ -473,97 +506,257 @@ function buildLayerQuotas(pointsByLayer, targetPointCount, minLayerShare) {
   return quotas;
 }
 
-function rankPoints(points, degreeMap) {
-  return points
-    .slice()
-    .sort((a, b) => {
-      const da = degreeMap.get(a.id) || 0;
-      const db = degreeMap.get(b.id) || 0;
-      if (db !== da) return db - da;
-      if (b.weight !== a.weight) return b.weight - a.weight;
-      return stableHash(a.id) - stableHash(b.id);
-    });
-}
-
-function pickLayerPoints(points, quota, degreeMap) {
-  if (quota <= 0) return [];
-  const bySemanticGroup = new Map();
+function splitSemanticGroups(points) {
+  const groups = new Map();
   points.forEach((point) => {
     const key = point.semanticGroup || point.layer || "default";
-    if (!bySemanticGroup.has(key)) bySemanticGroup.set(key, []);
-    bySemanticGroup.get(key).push(point);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(point);
   });
-
-  const groups = Array.from(bySemanticGroup.entries())
+  return Array.from(groups.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([key, groupPoints]) => ({
       key,
-      points: rankPoints(groupPoints, degreeMap),
-      index: 0,
+      points: sortPointsBySource(groupPoints),
     }));
+}
 
-  const picked = [];
-  while (picked.length < quota) {
+function buildGroupQuotas(groups, quota) {
+  const quotas = new Map(groups.map((group) => [group.key, 0]));
+  if (!groups.length || quota <= 0) return quotas;
+
+  const maxPickable = groups.reduce((acc, group) => acc + group.points.length, 0);
+  const target = Math.min(quota, maxPickable);
+  let assigned = 0;
+  while (assigned < target) {
+    let bestGroup = null;
+    let bestScore = -1;
+    groups.forEach((group) => {
+      const current = quotas.get(group.key) || 0;
+      const remaining = group.points.length - current;
+      if (remaining <= 0) return;
+      const score = remaining / (current + 1);
+      if (score > bestScore) {
+        bestScore = score;
+        bestGroup = group.key;
+      }
+    });
+    if (!bestGroup) break;
+    quotas.set(bestGroup, (quotas.get(bestGroup) || 0) + 1);
+    assigned += 1;
+  }
+  return quotas;
+}
+
+function uniqueRoundedIndices(length, count) {
+  if (count <= 0 || length <= 0) return [];
+  if (count >= length) return Array.from({ length }, (_, i) => i);
+
+  const picks = new Set();
+  if (count === 1) {
+    picks.add(Math.floor((length - 1) / 2));
+  } else {
+    for (let i = 0; i < count; i += 1) {
+      const idx = Math.round((i * (length - 1)) / (count - 1));
+      picks.add(Math.max(0, Math.min(length - 1, idx)));
+    }
+  }
+
+  if (picks.size >= count) {
+    return Array.from(picks).sort((a, b) => a - b);
+  }
+
+  for (let i = 0; i < length && picks.size < count; i += 1) {
+    picks.add(i);
+  }
+  return Array.from(picks).sort((a, b) => a - b);
+}
+
+function pickUniformFromGroup(groupPoints, count) {
+  const points = sortPointsBySource(groupPoints);
+  const indices = uniqueRoundedIndices(points.length, count);
+  return indices.map((index) => points[index]);
+}
+
+function selectLayerPoints(points, quota) {
+  if (quota <= 0 || !points.length) return [];
+  const groups = splitSemanticGroups(points);
+  const groupQuotas = buildGroupQuotas(groups, quota);
+  const selected = [];
+  groups.forEach((group) => {
+    const groupQuota = groupQuotas.get(group.key) || 0;
+    if (groupQuota <= 0) return;
+    selected.push(...pickUniformFromGroup(group.points, groupQuota));
+  });
+  return sortPointsBySource(selected);
+}
+
+function fillSelectionToTarget(selectedIds, pointsByLayer, targetPointCount) {
+  if (selectedIds.size >= targetPointCount) return;
+  const layers = Object.keys(pointsByLayer);
+  while (selectedIds.size < targetPointCount) {
     let progressed = false;
-    for (const group of groups) {
-      if (picked.length >= quota) break;
-      if (group.index >= group.points.length) continue;
-      picked.push(group.points[group.index]);
-      group.index += 1;
+    for (const layer of layers) {
+      if (selectedIds.size >= targetPointCount) break;
+      const candidate = pointsByLayer[layer].find((point) => !selectedIds.has(point.id));
+      if (!candidate) continue;
+      selectedIds.add(candidate.id);
       progressed = true;
     }
     if (!progressed) break;
   }
-
-  if (picked.length >= quota) return picked;
-  const remainder = rankPoints(points, degreeMap).filter(
-    (point) => !picked.some((pickedPoint) => pickedPoint.id === point.id)
-  );
-  for (const point of remainder) {
-    if (picked.length >= quota) break;
-    picked.push(point);
-  }
-  return picked;
 }
 
-function ensureConnectivitySelection(
-  selectedIds,
-  lineHints,
-  targetPointCount,
-  preserveConnectivity
-) {
-  if (!preserveConnectivity || selectedIds.size >= targetPointCount) return;
-  const rankedHints = lineHints.slice().sort((a, b) => b.strength - a.strength);
-  for (const hint of rankedHints) {
-    if (selectedIds.size >= targetPointCount) break;
-    const fromSelected = selectedIds.has(hint.from);
-    const toSelected = selectedIds.has(hint.to);
-    if (fromSelected && toSelected) continue;
-    if (fromSelected || toSelected) {
-      selectedIds.add(fromSelected ? hint.to : hint.from);
+function enforceLayerCoverage(selectedIds, pointsByLayer, targetPointCount) {
+  const layers = Object.keys(pointsByLayer);
+  const minimumPerLayer = targetPointCount >= layers.length * 2 ? 2 : 1;
+  layers.forEach((layer) => {
+    const layerPoints = pointsByLayer[layer];
+    const selectedInLayer = layerPoints.filter((point) => selectedIds.has(point.id)).length;
+    const needed = Math.min(layerPoints.length, minimumPerLayer) - selectedInLayer;
+    if (needed <= 0) return;
+    const additions = pickUniformFromGroup(layerPoints, selectedInLayer + needed)
+      .filter((point) => !selectedIds.has(point.id))
+      .slice(0, needed);
+    additions.forEach((point) => selectedIds.add(point.id));
+  });
+}
+
+function trimSelectionToTarget(selectedIds, pointsByLayer, targetPointCount) {
+  if (selectedIds.size <= targetPointCount) return;
+  const layers = Object.keys(pointsByLayer);
+  const minimumPerLayer = targetPointCount >= layers.length * 2 ? 2 : 1;
+  const selectedByLayer = new Map();
+  layers.forEach((layer) => {
+    selectedByLayer.set(
+      layer,
+      pointsByLayer[layer].filter((point) => selectedIds.has(point.id))
+    );
+  });
+
+  while (selectedIds.size > targetPointCount) {
+    let removed = false;
+    const candidates = layers
+      .map((layer) => ({ layer, points: selectedByLayer.get(layer) || [] }))
+      .sort((a, b) => b.points.length - a.points.length);
+    for (const candidate of candidates) {
+      const minCount = Math.min(pointsByLayer[candidate.layer].length, minimumPerLayer);
+      if (candidate.points.length <= minCount) continue;
+      const point = candidate.points[candidate.points.length - 1];
+      selectedIds.delete(point.id);
+      candidate.points.pop();
+      removed = true;
+      break;
     }
+    if (!removed) break;
   }
 }
 
-function removeIsolatedPoints(points, lineHints) {
-  const degree = buildDegreeMap(lineHints);
-  const layerCounts = new Map();
-  points.forEach((point) => {
-    layerCounts.set(point.layer, (layerCounts.get(point.layer) || 0) + 1);
-  });
-
-  const kept = [];
-  points.forEach((point) => {
-    const deg = degree.get(point.id) || 0;
-    const layerCount = layerCounts.get(point.layer) || 0;
-    const keep = deg > 0 || layerCount <= 1;
-    if (!keep) {
-      layerCounts.set(point.layer, layerCount - 1);
-      return;
+function buildGroupLineHints(points) {
+  const groups = splitSemanticGroups(points);
+  const hints = [];
+  const seen = new Set();
+  groups.forEach((group) => {
+    for (let i = 0; i < group.points.length - 1; i += 1) {
+      const from = group.points[i];
+      const to = group.points[i + 1];
+      const key = pairKey(from.id, to.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      hints.push({
+        from: from.id,
+        to: to.id,
+        strength: LAYER_WEIGHTS[from.layer] || 0.75,
+      });
     }
-    kept.push(point);
   });
-  return kept;
+  return hints;
+}
+
+function buildAdjacency(points, lineHints) {
+  const adjacency = new Map(points.map((point) => [point.id, new Set()]));
+  lineHints.forEach((hint) => {
+    if (!adjacency.has(hint.from) || !adjacency.has(hint.to)) return;
+    adjacency.get(hint.from).add(hint.to);
+    adjacency.get(hint.to).add(hint.from);
+  });
+  return adjacency;
+}
+
+function collectComponents(points, lineHints) {
+  const pointById = new Map(points.map((point) => [point.id, point]));
+  const adjacency = buildAdjacency(points, lineHints);
+  const visited = new Set();
+  const components = [];
+  points.forEach((point) => {
+    if (visited.has(point.id)) return;
+    const stack = [point.id];
+    visited.add(point.id);
+    const ids = [];
+    while (stack.length) {
+      const current = stack.pop();
+      ids.push(current);
+      for (const next of adjacency.get(current) || []) {
+        if (visited.has(next)) continue;
+        visited.add(next);
+        stack.push(next);
+      }
+    }
+    components.push({
+      ids,
+      points: ids.map((id) => pointById.get(id)).filter(Boolean),
+    });
+  });
+  return components.sort((a, b) => b.ids.length - a.ids.length);
+}
+
+function nearestComponentPair(primaryPoints, secondaryPoints) {
+  let best = null;
+  for (const a of primaryPoints) {
+    for (const b of secondaryPoints) {
+      const dx = a.nx - b.nx;
+      const dy = a.ny - b.ny;
+      const dist = Math.hypot(dx, dy);
+      if (!best || dist < best.dist) {
+        best = { from: a.id, to: b.id, dist };
+      }
+    }
+  }
+  return best;
+}
+
+function applyLightStitching(points, lineHints, profile, sampling) {
+  if (!sampling.stitchingEnabled) return lineHints;
+  const maxEdges = sampling.stitchMaxEdgesByProfile[profile] || 0;
+  const maxDistance = sampling.stitchMaxDistanceNxyByProfile[profile] || 0;
+  if (maxEdges <= 0 || maxDistance <= 0) return lineHints;
+
+  const pointIds = new Set(points.map((point) => point.id));
+  const stitched = lineHints.slice();
+  let used = 0;
+
+  while (used < maxEdges) {
+    const components = collectComponents(points, filterValidLineHints(stitched, pointIds));
+    if (components.length <= 1) break;
+    const primary = components[0];
+    let best = null;
+    for (let i = 1; i < components.length; i += 1) {
+      const pair = nearestComponentPair(primary.points, components[i].points);
+      if (!pair) continue;
+      if (!best || pair.dist < best.dist) {
+        best = pair;
+      }
+    }
+    if (!best || best.dist > maxDistance) break;
+    stitched.push({
+      from: best.from,
+      to: best.to,
+      strength: 0.34,
+    });
+    used += 1;
+  }
+
+  return filterValidLineHints(stitched, pointIds);
 }
 
 export function downsampleTemplateForProfile(template, profile, config = {}) {
@@ -576,14 +769,20 @@ export function downsampleTemplateForProfile(template, profile, config = {}) {
   const fallbackTarget = Math.max(
     24,
     Math.floor(
-      template.points.length * (profile === "high" ? 0.34 : profile === "medium" ? 0.29 : 0.22)
+      template.points.length * (profile === "high" ? 0.42 : profile === "medium" ? 0.36 : 0.28)
     )
   );
-  const targetPointCount = Math.min(
+  const requestedTarget = Math.min(
     template.points.length,
     Number.isFinite(maxTargetFromConfig) && maxTargetFromConfig > 0
       ? Math.floor(maxTargetFromConfig)
       : fallbackTarget
+  );
+  const sampleStep = sampling.sampleStepPxByProfile[profile] || 10;
+  const stepScale = sampleStep <= 10 ? 1 + (10 - sampleStep) * 0.02 : 1 - (sampleStep - 10) * 0.04;
+  const targetPointCount = Math.max(
+    16,
+    Math.min(template.points.length, Math.floor(requestedTarget * Math.max(0.6, stepScale)))
   );
 
   const pointIds = new Set(template.points.map((point) => point.id));
@@ -596,11 +795,13 @@ export function downsampleTemplateForProfile(template, profile, config = {}) {
     };
   }
 
-  const degreeMap = buildDegreeMap(validHints);
   const pointsByLayer = {};
   template.points.forEach((point) => {
     if (!pointsByLayer[point.layer]) pointsByLayer[point.layer] = [];
     pointsByLayer[point.layer].push(point);
+  });
+  Object.keys(pointsByLayer).forEach((layer) => {
+    pointsByLayer[layer] = sortPointsBySource(pointsByLayer[layer]);
   });
 
   const quotas = buildLayerQuotas(
@@ -611,49 +812,36 @@ export function downsampleTemplateForProfile(template, profile, config = {}) {
   const selectedIds = new Set();
   Object.keys(pointsByLayer).forEach((layer) => {
     const quota = quotas.get(layer) || 0;
-    const picks = pickLayerPoints(pointsByLayer[layer], quota, degreeMap);
+    const picks = selectLayerPoints(pointsByLayer[layer], quota);
     picks.forEach((point) => selectedIds.add(point.id));
   });
 
-  ensureConnectivitySelection(
-    selectedIds,
-    validHints,
-    targetPointCount,
-    sampling.preserveConnectivity
+  enforceLayerCoverage(selectedIds, pointsByLayer, targetPointCount);
+  fillSelectionToTarget(selectedIds, pointsByLayer, targetPointCount);
+  trimSelectionToTarget(selectedIds, pointsByLayer, targetPointCount);
+
+  const selectedPoints = sortPointsBySource(
+    template.points.filter((point) => selectedIds.has(point.id))
   );
-
-  if (selectedIds.size > targetPointCount) {
-    const rankedSelected = rankPoints(
-      template.points.filter((point) => selectedIds.has(point.id)),
-      degreeMap
-    );
-    selectedIds.clear();
-    rankedSelected.slice(0, targetPointCount).forEach((point) => selectedIds.add(point.id));
-  }
-
-  const selectedPoints = template.points.filter((point) => selectedIds.has(point.id));
-  const filteredHints = filterValidLineHints(validHints, selectedIds);
-  const nonIsolatedPoints = removeIsolatedPoints(selectedPoints, filteredHints);
-  const nonIsolatedIds = new Set(nonIsolatedPoints.map((point) => point.id));
-  const nonIsolatedHints = filterValidLineHints(filteredHints, nonIsolatedIds);
-
-  const requiredLayers = new Set(template.points.map((point) => point.layer));
-  const keptLayers = new Set(nonIsolatedPoints.map((point) => point.layer));
-  requiredLayers.forEach((layer) => {
-    if (keptLayers.has(layer)) return;
-    const fallbackPoint = rankPoints(pointsByLayer[layer] || [], degreeMap)[0];
-    if (!fallbackPoint) return;
-    nonIsolatedPoints.push(fallbackPoint);
-    nonIsolatedIds.add(fallbackPoint.id);
-    console.warn(
-      `[vector-template-loader] downsample layer coverage fallback: ${template.id} -> ${layer}`
-    );
-  });
+  const reconstructedHints = buildGroupLineHints(selectedPoints);
+  const carriedHints = sampling.preserveConnectivity
+    ? filterValidLineHints(validHints, selectedIds)
+    : [];
+  const mergedHints = filterValidLineHints(
+    [...reconstructedHints, ...carriedHints],
+    new Set(selectedPoints.map((point) => point.id))
+  );
+  const stitchedHints = applyLightStitching(
+    selectedPoints,
+    mergedHints,
+    profile,
+    sampling
+  );
 
   return {
     ...template,
-    points: nonIsolatedPoints,
-    lineHints: filterValidLineHints(validHints, new Set(nonIsolatedPoints.map((p) => p.id))),
+    points: selectedPoints,
+    lineHints: stitchedHints,
   };
 }
 

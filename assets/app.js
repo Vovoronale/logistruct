@@ -21,6 +21,10 @@ function applyBackgroundTestMode(enabled) {
   document.body.classList.toggle("is-bg-test", enabled);
 }
 
+function cloneDeep(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
 const profileConfig = {
   high: {
     particleCount: 124,
@@ -99,12 +103,25 @@ const engineConfig = {
         roof: 0.1,
       },
       preserveConnectivity: true,
+      stitchingEnabled: true,
+      stitchMaxEdgesByProfile: {
+        high: 4,
+        medium: 3,
+        low: 2,
+        reduced: 1,
+      },
+      stitchMaxDistanceNxyByProfile: {
+        high: 0.09,
+        medium: 0.085,
+        low: 0.08,
+        reduced: 0.075,
+      },
     },
     freeParticles: {
       ratioByProfile: {
-        high: 0.35,
-        medium: 0.3,
-        low: 0.2,
+        high: 0.3,
+        medium: 0.25,
+        low: 0.18,
         reduced: 0.2,
       },
       weakLinkDistance: 96,
@@ -242,6 +259,15 @@ function createNoopEngine() {
   return {
     setQuality() {},
     setFocus() {},
+    applyDebugOverrides() {},
+    applyDebugPreset() {},
+    resetDebugOverrides() {},
+    getDebugState() {
+      return null;
+    },
+    isPaused() {
+      return true;
+    },
     pause() {},
     resume() {},
     destroy() {},
@@ -302,6 +328,8 @@ function initBackground(canvasEl, config, initialTemplates) {
     strength: 0,
     targetStrength: 0,
   };
+  const defaultProfileState = cloneDeep(profileConfig);
+  const defaultStructureState = cloneDeep(config.structureMode);
 
   function nextTemplateId(currentId) {
     const index = templateOrder.indexOf(currentId);
@@ -428,14 +456,50 @@ function initBackground(canvasEl, config, initialTemplates) {
     const freeCount = Math.max(0, cfg.particleCount - boundCount);
 
     const nextParticles = [];
-    const shuffledAnchors = shuffle(structureState.anchors);
+    const anchorGroups = new Map();
+    structureState.anchors.forEach((anchor) => {
+      const key = `${anchor.layer}:${anchor.semanticGroup || anchor.layer}`;
+      if (!anchorGroups.has(key)) anchorGroups.set(key, []);
+      anchorGroups.get(key).push(anchor);
+    });
+    const groupedAnchors = Array.from(anchorGroups.values()).map((group) =>
+      group
+        .slice()
+        .sort((a, b) => {
+          const ai = Number.isFinite(a.sourceIndex) ? a.sourceIndex : 0;
+          const bi = Number.isFinite(b.sourceIndex) ? b.sourceIndex : 0;
+          return ai - bi;
+        })
+    );
+    const selectedAnchors = [];
+    const used = new Set();
+    while (selectedAnchors.length < boundCount) {
+      let progressed = false;
+      for (const group of groupedAnchors) {
+        if (selectedAnchors.length >= boundCount) break;
+        const anchor = group.find((candidate) => !used.has(candidate.id));
+        if (!anchor) continue;
+        used.add(anchor.id);
+        selectedAnchors.push(anchor);
+        progressed = true;
+      }
+      if (!progressed) break;
+    }
+    if (selectedAnchors.length < boundCount) {
+      for (const anchor of structureState.anchors) {
+        if (selectedAnchors.length >= boundCount) break;
+        if (used.has(anchor.id)) continue;
+        used.add(anchor.id);
+        selectedAnchors.push(anchor);
+      }
+    }
 
     for (let i = 0; i < boundCount; i += 1) {
-      const anchor = shuffledAnchors[i % shuffledAnchors.length];
+      const anchor = selectedAnchors[i % selectedAnchors.length];
       nextParticles.push({
         role: "bound",
-        x: anchor.x + (Math.random() - 0.5) * 24,
-        y: anchor.y + (Math.random() - 0.5) * 24,
+        x: anchor.x + (Math.random() - 0.5) * 12,
+        y: anchor.y + (Math.random() - 0.5) * 12,
         vx: (Math.random() - 0.5) * cfg.driftSpeed,
         vy: (Math.random() - 0.5) * cfg.driftSpeed,
         radius: 0.8 + Math.random() * 1.6,
@@ -1022,6 +1086,165 @@ function initBackground(canvasEl, config, initialTemplates) {
     focusState.projectId = projectId;
   }
 
+  function applyDebugOverrides(overrides = {}) {
+    const cfg = profileConfig[profile];
+    const mode = config.structureMode;
+    const sampling = mode.sampling;
+    let geometryDirty = false;
+
+    const numberKeys = [
+      "particleCount",
+      "freeRatio",
+      "linkDistance",
+      "driftSpeed",
+      "spring",
+      "damping",
+      "noise",
+      "fps",
+      "reactionRadiusPx",
+      "topologyEdgeCap",
+      "maxLinksPerParticle",
+      "alphaCap",
+      "weakLinkDistance",
+      "weakAlphaCap",
+      "sampleStepPx",
+      "stitchMaxEdges",
+      "stitchMaxDistance",
+    ];
+
+    for (const key of numberKeys) {
+      if (!(key in overrides)) continue;
+      const value = Number(overrides[key]);
+      if (!Number.isFinite(value)) continue;
+
+      if (key === "particleCount") {
+        cfg.particleCount = Math.max(24, Math.floor(value));
+        geometryDirty = true;
+      } else if (key === "freeRatio") {
+        mode.freeParticles.ratioByProfile[profile] = clamp(value, 0.05, 0.5);
+        geometryDirty = true;
+      } else if (key === "linkDistance") {
+        cfg.linkDistance = Math.max(40, value);
+      } else if (key === "driftSpeed") {
+        cfg.driftSpeed = Math.max(0.005, value);
+      } else if (key === "spring") {
+        cfg.spring = Math.max(0.001, value);
+      } else if (key === "damping") {
+        cfg.damping = clamp(value, 0.75, 0.995);
+      } else if (key === "noise") {
+        cfg.noise = Math.max(0, value);
+      } else if (key === "fps") {
+        cfg.fps = Math.max(8, Math.floor(value));
+      } else if (key === "reactionRadiusPx") {
+        mode.reactionRadiusPx = Math.max(60, value);
+      } else if (key === "topologyEdgeCap") {
+        mode.topologyEdgeCapByProfile[profile] = Math.max(12, Math.floor(value));
+      } else if (key === "maxLinksPerParticle") {
+        const cap = Math.max(1, Math.floor(value));
+        cfg.maxLinksPerParticle = cap;
+        mode.maxLinksPerParticle = cap;
+      } else if (key === "alphaCap") {
+        mode.alphaCap = clamp(value, 0.01, 0.6);
+      } else if (key === "weakLinkDistance") {
+        mode.freeParticles.weakLinkDistance = Math.max(16, value);
+      } else if (key === "weakAlphaCap") {
+        mode.freeParticles.weakAlphaCap = clamp(value, 0.005, 0.35);
+      } else if (key === "sampleStepPx") {
+        sampling.sampleStepPxByProfile[profile] = Math.max(4, Math.floor(value));
+        geometryDirty = true;
+      } else if (key === "stitchMaxEdges") {
+        sampling.stitchMaxEdgesByProfile[profile] = Math.max(0, Math.floor(value));
+        geometryDirty = true;
+      } else if (key === "stitchMaxDistance") {
+        sampling.stitchMaxDistanceNxyByProfile[profile] = clamp(value, 0.01, 0.4);
+        geometryDirty = true;
+      }
+    }
+
+    if (geometryDirty) {
+      rebuildAnchors();
+      createParticles();
+    }
+  }
+
+  function restoreProfileDefaults(targetProfile) {
+    const profileDefaults = defaultProfileState[targetProfile];
+    if (profileDefaults) {
+      profileConfig[targetProfile] = { ...profileConfig[targetProfile], ...profileDefaults };
+    }
+    const modeDefaults = defaultStructureState;
+    if (modeDefaults.freeParticles?.ratioByProfile?.[targetProfile] != null) {
+      config.structureMode.freeParticles.ratioByProfile[targetProfile] =
+        modeDefaults.freeParticles.ratioByProfile[targetProfile];
+    }
+    if (modeDefaults.topologyEdgeCapByProfile?.[targetProfile] != null) {
+      config.structureMode.topologyEdgeCapByProfile[targetProfile] =
+        modeDefaults.topologyEdgeCapByProfile[targetProfile];
+    }
+    if (modeDefaults.sampling?.sampleStepPxByProfile?.[targetProfile] != null) {
+      config.structureMode.sampling.sampleStepPxByProfile[targetProfile] =
+        modeDefaults.sampling.sampleStepPxByProfile[targetProfile];
+    }
+    if (modeDefaults.sampling?.stitchMaxEdgesByProfile?.[targetProfile] != null) {
+      config.structureMode.sampling.stitchMaxEdgesByProfile[targetProfile] =
+        modeDefaults.sampling.stitchMaxEdgesByProfile[targetProfile];
+    }
+    if (modeDefaults.sampling?.stitchMaxDistanceNxyByProfile?.[targetProfile] != null) {
+      config.structureMode.sampling.stitchMaxDistanceNxyByProfile[targetProfile] =
+        modeDefaults.sampling.stitchMaxDistanceNxyByProfile[targetProfile];
+    }
+  }
+
+  function applyDebugPreset(nextProfile) {
+    if (!profileConfig[nextProfile]) return;
+    restoreProfileDefaults(nextProfile);
+    setQuality(nextProfile);
+  }
+
+  function resetDebugOverrides() {
+    Object.keys(defaultProfileState).forEach((preset) => restoreProfileDefaults(preset));
+    config.structureMode.maxLinksPerParticle = defaultStructureState.maxLinksPerParticle;
+    config.structureMode.alphaCap = defaultStructureState.alphaCap;
+    config.structureMode.reactionRadiusPx = defaultStructureState.reactionRadiusPx;
+    config.structureMode.freeParticles.weakLinkDistance =
+      defaultStructureState.freeParticles.weakLinkDistance;
+    config.structureMode.freeParticles.weakAlphaCap =
+      defaultStructureState.freeParticles.weakAlphaCap;
+    config.structureMode.sampling.stitchingEnabled =
+      defaultStructureState.sampling.stitchingEnabled;
+    setQuality(getMotionProfile());
+  }
+
+  function getDebugState() {
+    const cfg = profileConfig[profile];
+    const mode = config.structureMode;
+    return {
+      profile,
+      running,
+      particleCount: cfg.particleCount,
+      freeRatio: mode.freeParticles.ratioByProfile[profile] ?? 0.2,
+      linkDistance: cfg.linkDistance,
+      driftSpeed: cfg.driftSpeed,
+      spring: cfg.spring,
+      damping: cfg.damping,
+      noise: cfg.noise,
+      fps: cfg.fps,
+      reactionRadiusPx: mode.reactionRadiusPx,
+      topologyEdgeCap: mode.topologyEdgeCapByProfile[profile] || 0,
+      maxLinksPerParticle: mode.maxLinksPerParticle,
+      alphaCap: mode.alphaCap,
+      weakLinkDistance: mode.freeParticles.weakLinkDistance,
+      weakAlphaCap: mode.freeParticles.weakAlphaCap,
+      sampleStepPx: mode.sampling.sampleStepPxByProfile[profile] || 10,
+      stitchMaxEdges: mode.sampling.stitchMaxEdgesByProfile[profile] || 0,
+      stitchMaxDistance: mode.sampling.stitchMaxDistanceNxyByProfile[profile] || 0,
+    };
+  }
+
+  function isPaused() {
+    return !running;
+  }
+
   function pause() {
     running = false;
     cancelAnimationFrame(rafId);
@@ -1061,6 +1284,11 @@ function initBackground(canvasEl, config, initialTemplates) {
   return {
     setQuality,
     setFocus,
+    applyDebugOverrides,
+    applyDebugPreset,
+    resetDebugOverrides,
+    getDebugState,
+    isPaused,
     pause,
     resume,
     destroy,
@@ -1113,6 +1341,116 @@ function setupMapInteractions(backgroundEngine) {
   }
 }
 
+function setupBackgroundTestControls(backgroundEngine) {
+  if (!backgroundTestMode) return;
+  if (!backgroundEngine || typeof backgroundEngine.getDebugState !== "function") return;
+
+  const state = backgroundEngine.getDebugState();
+  if (!state) return;
+
+  const controls = [
+    { key: "particleCount", label: "Particles", min: 24, max: 220, step: 1 },
+    { key: "freeRatio", label: "Free Ratio", min: 0.05, max: 0.5, step: 0.01 },
+    { key: "linkDistance", label: "Link Distance", min: 50, max: 220, step: 1 },
+    { key: "driftSpeed", label: "Drift Speed", min: 0.01, max: 0.5, step: 0.005 },
+    { key: "spring", label: "Spring", min: 0.001, max: 0.06, step: 0.001 },
+    { key: "damping", label: "Damping", min: 0.8, max: 0.995, step: 0.001 },
+    { key: "noise", label: "Noise", min: 0, max: 0.3, step: 0.005 },
+    { key: "fps", label: "FPS Target", min: 8, max: 60, step: 1 },
+    { key: "reactionRadiusPx", label: "Reaction Radius", min: 60, max: 360, step: 1 },
+    { key: "topologyEdgeCap", label: "Topology Edge Cap", min: 16, max: 260, step: 1 },
+    { key: "maxLinksPerParticle", label: "Max Links/Point", min: 1, max: 10, step: 1 },
+    { key: "alphaCap", label: "Alpha Cap", min: 0.01, max: 0.6, step: 0.005 },
+    { key: "weakLinkDistance", label: "Weak Link Distance", min: 20, max: 220, step: 1 },
+    { key: "weakAlphaCap", label: "Weak Alpha Cap", min: 0.005, max: 0.3, step: 0.005 },
+    { key: "sampleStepPx", label: "Sample Step", min: 4, max: 20, step: 1 },
+    { key: "stitchMaxEdges", label: "Stitch Max Edges", min: 0, max: 10, step: 1 },
+    { key: "stitchMaxDistance", label: "Stitch Max Dist", min: 0.01, max: 0.25, step: 0.005 },
+  ];
+
+  const panel = document.createElement("aside");
+  panel.id = "bg-test-controls";
+  panel.setAttribute("aria-label", "Background test controls");
+  panel.innerHTML = `
+    <h2>bgTest Controls</h2>
+    <p class="bg-test-subtitle">Live tuning for particle structure</p>
+    <div class="bg-test-presets" role="group" aria-label="Quality presets">
+      <button type="button" data-preset="high">High</button>
+      <button type="button" data-preset="medium">Medium</button>
+      <button type="button" data-preset="low">Low</button>
+      <button type="button" data-action="reset">Reset</button>
+      <button type="button" data-action="pause">Pause</button>
+    </div>
+    <div class="bg-test-controls-list"></div>
+  `;
+  document.body.appendChild(panel);
+
+  const listEl = panel.querySelector(".bg-test-controls-list");
+  const controlMap = new Map();
+
+  controls.forEach((control) => {
+    const row = document.createElement("label");
+    row.className = "bg-test-control-row";
+    row.innerHTML = `
+      <span class="bg-test-control-name">${control.label}</span>
+      <input type="range" min="${control.min}" max="${control.max}" step="${control.step}" />
+      <output></output>
+    `;
+    const input = row.querySelector("input");
+    const output = row.querySelector("output");
+    input.addEventListener("input", () => {
+      const value = Number(input.value);
+      backgroundEngine.applyDebugOverrides({ [control.key]: value });
+      const snapshot = backgroundEngine.getDebugState();
+      const display = snapshot ? snapshot[control.key] : value;
+      output.textContent = Number(display).toFixed(control.step < 1 ? 3 : 0);
+    });
+    controlMap.set(control.key, { input, output, control });
+    listEl?.appendChild(row);
+  });
+
+  const pauseButton = panel.querySelector('button[data-action="pause"]');
+
+  function syncPauseLabel() {
+    if (!pauseButton) return;
+    pauseButton.textContent = backgroundEngine.isPaused() ? "Resume" : "Pause";
+  }
+
+  function syncFromState() {
+    const snapshot = backgroundEngine.getDebugState();
+    if (!snapshot) return;
+    controlMap.forEach((entry, key) => {
+      const value = Number(snapshot[key]);
+      if (!Number.isFinite(value)) return;
+      entry.input.value = String(value);
+      entry.output.textContent = value.toFixed(entry.control.step < 1 ? 3 : 0);
+    });
+    syncPauseLabel();
+  }
+
+  panel.querySelectorAll("button[data-preset]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const preset = button.getAttribute("data-preset");
+      if (!preset) return;
+      backgroundEngine.applyDebugPreset(preset);
+      syncFromState();
+    });
+  });
+
+  panel.querySelector('button[data-action="reset"]')?.addEventListener("click", () => {
+    backgroundEngine.resetDebugOverrides();
+    syncFromState();
+  });
+
+  pauseButton?.addEventListener("click", () => {
+    if (backgroundEngine.isPaused()) backgroundEngine.resume();
+    else backgroundEngine.pause();
+    syncPauseLabel();
+  });
+
+  syncFromState();
+}
+
 function animateCounters() {
   const metrics = document.querySelectorAll(".metric-value[data-count]");
   if (!metrics.length) return;
@@ -1156,6 +1494,8 @@ async function bootstrapBackground(backgroundTestMode = false) {
     setupMapInteractions(engine);
     animateCounters();
     setYear();
+  } else {
+    setupBackgroundTestControls(engine);
   }
 }
 
