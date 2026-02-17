@@ -17,9 +17,95 @@ test("demo site files exist", () => {
   read("assets/app.js");
   read("assets/background-templates.js");
   read("assets/vector-template-loader.js");
+  read("assets/themes/default.json");
+  read("assets/themes/dark.json");
+  read("assets/themes/light.json");
   read("assets/structures/index.json");
   read("assets/structures/bridge.svg");
   read("assets/structures/industrial_frame.svg");
+});
+
+test("default theme file has required schema and token keys", () => {
+  const raw = read("assets/themes/default.json");
+  const parsed = JSON.parse(raw);
+  assert.equal(parsed.version, 1, "Theme schema version must be 1");
+  assert.ok(typeof parsed.name === "string" && parsed.name.length > 0, "Theme name is required");
+  assert.ok(parsed.tokens && typeof parsed.tokens === "object", "Theme tokens object is required");
+  const required = [
+    "--bg",
+    "--bg-soft",
+    "--bg-radial-start",
+    "--bg-radial-end",
+    "--surface",
+    "--surface-strong",
+    "--line",
+    "--text",
+    "--text-dim",
+    "--accent",
+    "--accent-warm",
+    "--danger",
+    "--shadow",
+    "--bg-grid-rgb",
+    "--bg-grid-opacity",
+    "--bg-grid-size",
+    "--control-panel-border",
+    "--control-panel-bg",
+    "--control-panel-shadow",
+    "--control-btn-border",
+    "--control-btn-bg",
+    "--control-tab-border",
+    "--control-tab-bg",
+    "--theme-tab-active-bg",
+    "--theme-tab-active-border",
+    "--bg-test-tab-active-bg",
+    "--bg-test-tab-active-border",
+    "--control-input-border",
+    "--control-input-bg",
+    "--header-bg",
+    "--nav-hover-bg",
+    "--section-gradient-start",
+    "--section-gradient-mid",
+    "--section-gradient-end",
+    "--btn-primary-mid",
+    "--btn-primary-end",
+    "--btn-primary-text",
+    "--btn-primary-shadow",
+    "--btn-ghost-border",
+    "--btn-ghost-bg",
+    "--card-active-border",
+    "--map-shell-bg",
+    "--map-bg-fill",
+    "--map-region-fill",
+    "--map-region-stroke",
+    "--map-node-pulse-fill",
+    "--map-node-pulse-stroke",
+    "--route-gradient-start",
+    "--route-gradient-end",
+    "--canvas-bound-point",
+    "--canvas-free-point",
+    "--canvas-topology-link",
+    "--canvas-free-link",
+    "--canvas-cross-link",
+    "--canvas-gradient-start",
+    "--canvas-gradient-end",
+  ];
+  required.forEach((key) => {
+    assert.ok(key in parsed.tokens, `Theme token ${key} must exist`);
+  });
+});
+
+test("light and dark theme files are present and valid", () => {
+  const required = ["dark", "light"];
+  required.forEach((name) => {
+    const raw = read(`assets/themes/${name}.json`);
+    const parsed = JSON.parse(raw);
+    assert.equal(parsed.version, 1, `${name} theme schema version must be 1`);
+    assert.ok(typeof parsed.name === "string" && parsed.name.length > 0, `${name} theme name is required`);
+    assert.ok(parsed.tokens && typeof parsed.tokens === "object", `${name} theme tokens are required`);
+    assert.ok(parsed.tokens["--bg"], `${name} theme must define --bg`);
+    assert.ok(parsed.tokens["--text"], `${name} theme must define --text`);
+    assert.ok(parsed.tokens["--accent"], `${name} theme must define --accent`);
+  });
 });
 
 test("index.html has required premium showcase sections", () => {
@@ -267,6 +353,29 @@ test("runtime script supports bgTest mode toggle via URL query", () => {
   );
 });
 
+test("runtime script supports theme editor mode and theme file query", () => {
+  const js = read("assets/app.js");
+  assert.ok(js.includes("themeEditor"), "themeEditor query key handling is required");
+  assert.ok(js.includes("is-theme-editor"), "themeEditor mode must toggle body class");
+  assert.ok(js.includes("assets/themes/"), "theme loader path must use assets/themes/");
+  assert.ok(js.includes(".json"), "theme loader should fetch JSON file");
+  assert.ok(js.includes("--canvas-bound-point"), "theme token list should include canvas point color");
+  assert.ok(js.includes("--route-gradient-start"), "theme token list should include route gradient start");
+  assert.ok(js.includes("THEME_TOKENS_APPLIED_EVENT"), "theme updates should publish a runtime event");
+});
+
+test("runtime script handles bgTest and themeEditor conflict by ignoring both", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("backgroundTestMode && themeEditorMode"),
+    "Runtime must detect conflict between bgTest and themeEditor"
+  );
+  assert.ok(
+    js.includes("Ignoring both special modes"),
+    "Runtime should warn when both special modes are provided"
+  );
+});
+
 test("runtime script skips non-background UI setup in bgTest mode", () => {
   const js = read("assets/app.js");
   assert.match(
@@ -329,24 +438,73 @@ test("runtime script includes bgTest control panel and live debug actions", () =
   );
 });
 
+test("runtime script includes theme editor panel and save-to-file export", () => {
+  const js = read("assets/app.js");
+  assert.ok(js.includes("theme-editor-controls"), "Theme editor panel id must exist in runtime");
+  assert.ok(js.includes("Save Theme File"), "Theme editor must include save button");
+  assert.ok(js.includes("data-action=\"theme-dark\""), "Theme editor should include Dark theme action");
+  assert.ok(js.includes("data-action=\"theme-light\""), "Theme editor should include Light theme action");
+  assert.ok(js.includes("theme-editor-color-combo"), "Theme editor should include combined picker+text color controls");
+  assert.ok(js.includes("Grid Color"), "Theme editor should expose Grid Color control");
+  assert.ok(js.includes("Components"), "Theme editor should expose Components tab");
+  assert.ok(js.includes("Canvas"), "Theme editor should expose Canvas tab");
+  assert.ok(js.includes("new Blob"), "Theme export must create Blob");
+  assert.ok(js.includes("download"), "Theme export must trigger download");
+});
+
+test("styles keep color literals only in theme token definitions", () => {
+  const css = read("assets/styles.css");
+  const rootMatch = css.match(/:root\s*\{[\s\S]*?\n\}/);
+  assert.ok(rootMatch, "styles.css must contain :root token block");
+  const cssWithoutRoot = css.replace(rootMatch[0], "");
+  const literals = [...cssWithoutRoot.matchAll(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)|rgb\([^)]*\)/g)]
+    .map((match) => match[0])
+    .filter((value) => !value.includes("var(") && value !== "transparent");
+  assert.deepEqual(
+    literals,
+    [],
+    `Expected no hardcoded color literals outside :root, found: ${literals.join(", ")}`
+  );
+});
+
+test("route gradient stops are token-driven", () => {
+  const html = read("index.html");
+  const css = read("assets/styles.css");
+  assert.ok(html.includes("route-gradient-stop-start"), "Route gradient start stop class is required");
+  assert.ok(html.includes("route-gradient-stop-end"), "Route gradient end stop class is required");
+  assert.ok(css.includes("var(--route-gradient-start)"), "Route gradient start must use token");
+  assert.ok(css.includes("var(--route-gradient-end)"), "Route gradient end must use token");
+});
+
 test("runtime script includes appearance and group interaction debug keys", () => {
   const js = read("assets/app.js");
   assert.ok(js.includes("boundPointColor"), "Appearance key boundPointColor is required");
   assert.ok(js.includes("gridOpacity"), "Appearance key gridOpacity is required");
+  assert.ok(js.includes("holdMs"), "Animation timing key holdMs is required");
+  assert.ok(js.includes("crumbleMs"), "Animation timing key crumbleMs is required");
+  assert.ok(js.includes("rebuildMs"), "Animation timing key rebuildMs is required");
   assert.ok(js.includes("boundBoundStrength"), "Group interaction key boundBoundStrength is required");
   assert.ok(js.includes("freeBoundGateScale"), "Group interaction key freeBoundGateScale is required");
   assert.ok(js.includes("clusterAdjacencySpan"), "Group interaction key clusterAdjacencySpan is required");
 });
 
-test("runtime script keeps bgTest sliders session-only", () => {
+test("runtime script persists bgTest settings and avoids URL-sync", () => {
   const js = read("assets/app.js");
   assert.ok(
-    !js.includes("localStorage"),
-    "bgTest controls must not persist settings to localStorage"
+    js.includes("localStorage"),
+    "bgTest controls must persist settings to localStorage"
+  );
+  assert.ok(
+    js.includes("getItem") && js.includes("setItem"),
+    "bgTest controls must read/write last state"
+  );
+  assert.ok(
+    js.includes("bgTestControls:lastState:v1"),
+    "bgTest controls should use a stable storage key"
   );
   assert.ok(
     !js.includes("sessionStorage"),
-    "bgTest controls must not persist settings to sessionStorage"
+    "bgTest controls should not use sessionStorage"
   );
   assert.ok(
     !js.includes("history.replaceState") && !js.includes("history.pushState"),
@@ -363,4 +521,18 @@ test("styles include tabbed bgTest controls and tunable grid variables", () => {
   assert.ok(css.includes(".bg-test-tab"), "Tab button styles are required");
   assert.ok(css.includes(".bg-test-panel"), "Tab panel styles are required");
   assert.ok(css.includes(".bg-test-panel[hidden]"), "Hidden tab panel style is required");
+});
+
+test("styles include full-page theme editor mode and controls", () => {
+  const css = read("assets/styles.css");
+  assert.ok(css.includes("body.is-theme-editor"), "Theme editor body state is required");
+  assert.ok(css.includes("#theme-editor-controls"), "Theme editor panel styles are required");
+  assert.ok(css.includes(".theme-editor-color-combo"), "Theme editor should style combined picker+text rows");
+  assert.ok(css.includes(".theme-editor-color-value"), "Theme editor must style text input for hex colors");
+  assert.ok(
+    !/body\.is-theme-editor\s+\.site-header[\s\S]*display:\s*none/.test(css) &&
+      !/body\.is-theme-editor\s+main[\s\S]*display:\s*none/.test(css) &&
+      !/body\.is-theme-editor\s+\.site-footer[\s\S]*display:\s*none/.test(css),
+    "Theme editor mode must not hide page foreground sections"
+  );
 });

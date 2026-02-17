@@ -11,14 +11,29 @@ import {
 const canvas = document.getElementById("bg-canvas");
 const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-function isBackgroundTestMode() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("bgTest") === "1";
+function isBackgroundTestMode(searchParams = new URLSearchParams(window.location.search)) {
+  return searchParams.get("bgTest") === "1";
+}
+
+function isThemeEditorMode(searchParams = new URLSearchParams(window.location.search)) {
+  return searchParams.get("themeEditor") === "1";
+}
+
+function getThemeParamName(searchParams = new URLSearchParams(window.location.search)) {
+  const raw = (searchParams.get("theme") || "").trim().toLowerCase();
+  if (!raw) return null;
+  if (!/^[a-z0-9_-]+$/.test(raw)) return null;
+  return raw;
 }
 
 function applyBackgroundTestMode(enabled) {
   if (!document.body) return;
   document.body.classList.toggle("is-bg-test", enabled);
+}
+
+function applyThemeEditorMode(enabled) {
+  if (!document.body) return;
+  document.body.classList.toggle("is-theme-editor", enabled);
 }
 
 function cloneDeep(value) {
@@ -161,6 +176,8 @@ const DEFAULT_DEBUG_VISUAL_STATE = {
   topologyLinkColor: "#65b9d2",
   freeLinkColor: "#7aadc0",
   crossLinkColor: "#6aa5ba",
+  gradientStartColor: "#2bd2bb",
+  gradientEndColor: "#ffcf66",
   gridColor: "#ffffff",
   pointSizeScale: 1,
   linkWidthPx: 1,
@@ -176,6 +193,237 @@ const DEFAULT_DEBUG_INTERACTION_STATE = {
   freeBoundGateScale: 1,
   clusterAdjacencySpan: 1,
 };
+
+const BG_TEST_STORAGE_KEY = "bgTestControls:lastState:v1";
+const THEME_FILE_VERSION = 1;
+const THEME_TOKENS_APPLIED_EVENT = "logistruct:theme-tokens-applied";
+const THEME_TOKEN_KEYS = [
+  "--bg",
+  "--bg-soft",
+  "--bg-radial-start",
+  "--bg-radial-end",
+  "--surface",
+  "--surface-strong",
+  "--line",
+  "--text",
+  "--text-dim",
+  "--accent",
+  "--accent-warm",
+  "--danger",
+  "--shadow",
+  "--bg-grid-rgb",
+  "--bg-grid-opacity",
+  "--bg-grid-size",
+  "--control-panel-border",
+  "--control-panel-bg",
+  "--control-panel-shadow",
+  "--control-btn-border",
+  "--control-btn-bg",
+  "--control-tab-border",
+  "--control-tab-bg",
+  "--theme-tab-active-bg",
+  "--theme-tab-active-border",
+  "--bg-test-tab-active-bg",
+  "--bg-test-tab-active-border",
+  "--control-input-border",
+  "--control-input-bg",
+  "--header-bg",
+  "--nav-hover-bg",
+  "--section-gradient-start",
+  "--section-gradient-mid",
+  "--section-gradient-end",
+  "--btn-primary-mid",
+  "--btn-primary-end",
+  "--btn-primary-text",
+  "--btn-primary-shadow",
+  "--btn-ghost-border",
+  "--btn-ghost-bg",
+  "--card-active-border",
+  "--map-shell-bg",
+  "--map-bg-fill",
+  "--map-region-fill",
+  "--map-region-stroke",
+  "--map-node-pulse-fill",
+  "--map-node-pulse-stroke",
+  "--route-gradient-start",
+  "--route-gradient-end",
+  "--canvas-bound-point",
+  "--canvas-free-point",
+  "--canvas-topology-link",
+  "--canvas-free-link",
+  "--canvas-cross-link",
+  "--canvas-gradient-start",
+  "--canvas-gradient-end",
+];
+const THEME_HEX_KEYS = [
+  "--bg",
+  "--bg-soft",
+  "--bg-radial-start",
+  "--bg-radial-end",
+  "--text",
+  "--text-dim",
+  "--accent",
+  "--accent-warm",
+  "--danger",
+  "--btn-primary-mid",
+  "--btn-primary-end",
+  "--btn-primary-text",
+  "--route-gradient-start",
+  "--route-gradient-end",
+  "--canvas-bound-point",
+  "--canvas-free-point",
+  "--canvas-topology-link",
+  "--canvas-free-link",
+  "--canvas-cross-link",
+  "--canvas-gradient-start",
+  "--canvas-gradient-end",
+];
+const THEME_TEXT_COLOR_KEYS = [
+  "--surface",
+  "--surface-strong",
+  "--line",
+  "--control-panel-border",
+  "--control-panel-bg",
+  "--control-btn-border",
+  "--control-btn-bg",
+  "--control-tab-border",
+  "--control-tab-bg",
+  "--theme-tab-active-bg",
+  "--theme-tab-active-border",
+  "--bg-test-tab-active-bg",
+  "--bg-test-tab-active-border",
+  "--control-input-border",
+  "--control-input-bg",
+  "--header-bg",
+  "--nav-hover-bg",
+  "--section-gradient-start",
+  "--section-gradient-mid",
+  "--section-gradient-end",
+  "--btn-ghost-border",
+  "--btn-ghost-bg",
+  "--card-active-border",
+  "--map-shell-bg",
+  "--map-bg-fill",
+  "--map-region-fill",
+  "--map-region-stroke",
+  "--map-node-pulse-fill",
+  "--map-node-pulse-stroke",
+];
+const THEME_TEXT_VALUE_KEYS = ["--shadow", "--control-panel-shadow", "--btn-primary-shadow"];
+
+function readThemeTokensFromRoot() {
+  const style = window.getComputedStyle(document.documentElement);
+  const tokens = {};
+  THEME_TOKEN_KEYS.forEach((key) => {
+    tokens[key] = style.getPropertyValue(key).trim();
+  });
+  return tokens;
+}
+
+function normalizeGridRgb(value, fallback = "255 255 255") {
+  const parts = String(value || "")
+    .replaceAll(",", " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => Number(part));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) return fallback;
+  return parts.map((part) => String(Math.max(0, Math.min(255, Math.round(part))))).join(" ");
+}
+
+function normalizeGridOpacity(value, fallback = "0.46") {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return String(clamp(number, 0, 1));
+}
+
+function normalizeGridSize(value, fallback = "34px") {
+  const raw = String(value || "").trim().toLowerCase();
+  const parsed = /^([0-9]+(?:\.[0-9]+)?)px$/.exec(raw);
+  const base = parsed ? Number(parsed[1]) : Number(raw);
+  if (!Number.isFinite(base)) return fallback;
+  return `${Math.round(clamp(base, 12, 120))}px`;
+}
+
+function normalizeThemeTokenValue(key, value, fallbackValue) {
+  if (THEME_HEX_KEYS.includes(key)) {
+    return normalizeHexColor(String(value || ""), normalizeHexColor(String(fallbackValue || "#ffffff")));
+  }
+  if (THEME_TEXT_COLOR_KEYS.includes(key)) {
+    const text = String(value || "").trim();
+    return text || String(fallbackValue || "");
+  }
+  if (THEME_TEXT_VALUE_KEYS.includes(key)) {
+    const text = String(value || "").trim();
+    return text || String(fallbackValue || "");
+  }
+  if (key === "--bg-grid-rgb") return normalizeGridRgb(value, String(fallbackValue || "255 255 255"));
+  if (key === "--bg-grid-opacity") return normalizeGridOpacity(value, String(fallbackValue || "0.46"));
+  if (key === "--bg-grid-size") return normalizeGridSize(value, String(fallbackValue || "34px"));
+  return String(value || "").trim() || String(fallbackValue || "");
+}
+
+function sanitizeThemeTokens(inputTokens = {}, fallbackTokens = {}) {
+  const next = {};
+  THEME_TOKEN_KEYS.forEach((key) => {
+    const fallbackValue = fallbackTokens[key] || "";
+    if (!(key in inputTokens)) {
+      next[key] = String(fallbackValue);
+      return;
+    }
+    next[key] = normalizeThemeTokenValue(key, inputTokens[key], fallbackValue);
+  });
+  return next;
+}
+
+function applyThemeTokens(tokens = {}) {
+  const fallbackTokens = readThemeTokensFromRoot();
+  const sanitized = sanitizeThemeTokens(tokens, fallbackTokens);
+  const root = document.documentElement;
+  Object.entries(sanitized).forEach(([key, value]) => {
+    root.style.setProperty(key, String(value));
+  });
+  window.dispatchEvent(
+    new CustomEvent(THEME_TOKENS_APPLIED_EVENT, {
+      detail: { tokens: sanitized },
+    })
+  );
+  return sanitized;
+}
+
+function parseThemeDocument(payload, fallbackTokens) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.version !== THEME_FILE_VERSION) return null;
+  if (!payload.tokens || typeof payload.tokens !== "object" || Array.isArray(payload.tokens)) return null;
+  const name =
+    typeof payload.name === "string" && payload.name.trim()
+      ? payload.name.trim()
+      : "custom";
+  return {
+    version: THEME_FILE_VERSION,
+    name,
+    tokens: sanitizeThemeTokens(payload.tokens, fallbackTokens),
+  };
+}
+
+async function loadThemeFromFile(themeName, fallbackTokens) {
+  if (!themeName) return null;
+  if (!/^[a-z0-9_-]+$/.test(themeName)) return null;
+
+  const sourcePath = `assets/themes/${themeName}.json`;
+  try {
+    const response = await fetch(sourcePath);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const parsed = parseThemeDocument(payload, fallbackTokens);
+    if (!parsed) throw new Error("Invalid theme document");
+    applyThemeTokens(parsed.tokens);
+    return parsed;
+  } catch (error) {
+    console.warn(`[theme-editor] failed to load ${sourcePath}:`, error);
+    return null;
+  }
+}
 
 function getMotionProfile() {
   if (prefersReduced.matches) return "reduced";
@@ -221,6 +469,83 @@ function hexToRgbComma(hexColor, fallback = "#ffffff") {
 function hexToRgbSpace(hexColor, fallback = "#ffffff") {
   const [r, g, b] = hexToRgbTuple(hexColor, fallback);
   return `${r} ${g} ${b}`;
+}
+
+function rgbTupleToHex(r, g, b) {
+  const clampChannel = (value) => Math.round(clamp(Number(value), 0, 255));
+  const toHex = (value) => clampChannel(value).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function parseColorLikeToHex(value, fallback = "#ffffff") {
+  const fallbackHex = normalizeHexColor(fallback, "#ffffff");
+  if (typeof value !== "string") return fallbackHex;
+  const raw = value.trim();
+  if (!raw) return fallbackHex;
+  if (raw.startsWith("#")) return normalizeHexColor(raw, fallbackHex);
+
+  const rgbaMatch = /^rgba?\(\s*([0-9]{1,3}(?:\.[0-9]+)?)\s*[, ]\s*([0-9]{1,3}(?:\.[0-9]+)?)\s*[, ]\s*([0-9]{1,3}(?:\.[0-9]+)?)(?:\s*[,/]\s*([0-9]*\.?[0-9]+)\s*)?\)$/i.exec(
+    raw
+  );
+  if (rgbaMatch) {
+    return rgbTupleToHex(
+      Number(rgbaMatch[1]),
+      Number(rgbaMatch[2]),
+      Number(rgbaMatch[3])
+    );
+  }
+
+  const parts = raw
+    .replaceAll(",", " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => Number(part));
+  if (parts.length === 3 && parts.every((part) => Number.isFinite(part))) {
+    return rgbTupleToHex(parts[0], parts[1], parts[2]);
+  }
+
+  return fallbackHex;
+}
+
+function readRgbaAlpha(value, fallback = 1) {
+  if (typeof value !== "string") return clamp(Number(fallback) || 1, 0, 1);
+  const raw = value.trim();
+  const rgbaMatch = /^rgba?\(\s*([0-9]{1,3}(?:\.[0-9]+)?)\s*[, ]\s*([0-9]{1,3}(?:\.[0-9]+)?)\s*[, ]\s*([0-9]{1,3}(?:\.[0-9]+)?)(?:\s*[,/]\s*([0-9]*\.?[0-9]+)\s*)?\)$/i.exec(
+    raw
+  );
+  if (!rgbaMatch) return clamp(Number(fallback) || 1, 0, 1);
+  if (rgbaMatch[4] == null) return 1;
+  const alpha = Number(rgbaMatch[4]);
+  if (!Number.isFinite(alpha)) return clamp(Number(fallback) || 1, 0, 1);
+  return clamp(alpha, 0, 1);
+}
+
+function composeRgbaFromHex(hexColor, alpha = 1) {
+  const [r, g, b] = hexToRgbTuple(hexColor, "#ffffff");
+  const safeAlpha = clamp(Number(alpha) || 1, 0, 1);
+  const alphaText = safeAlpha.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  return `rgba(${r}, ${g}, ${b}, ${alphaText})`;
+}
+
+function readBackgroundTestState() {
+  try {
+    const raw = window.localStorage.getItem(BG_TEST_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeBackgroundTestState(state) {
+  try {
+    if (!state || typeof state !== "object") return;
+    window.localStorage.setItem(BG_TEST_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage failures in restricted browser contexts.
+  }
 }
 
 function easeInOutSine(t) {
@@ -385,10 +710,56 @@ function initBackground(canvasEl, config, initialTemplates) {
   };
   const defaultProfileState = cloneDeep(profileConfig);
   const defaultStructureState = cloneDeep(config.structureMode);
+  const defaultPhaseState = cloneDeep(config.phase);
   const defaultVisualState = cloneDeep(DEFAULT_DEBUG_VISUAL_STATE);
   const defaultInteractionState = cloneDeep(DEFAULT_DEBUG_INTERACTION_STATE);
   const debugVisualState = cloneDeep(DEFAULT_DEBUG_VISUAL_STATE);
   const debugInteractionState = cloneDeep(DEFAULT_DEBUG_INTERACTION_STATE);
+
+  function syncVisualStateFromThemeTokens(inputTokens = readThemeTokensFromRoot()) {
+    const tokens = sanitizeThemeTokens(inputTokens, readThemeTokensFromRoot());
+    debugVisualState.boundPointColor = normalizeHexColor(
+      tokens["--canvas-bound-point"],
+      defaultVisualState.boundPointColor
+    );
+    debugVisualState.freePointColor = normalizeHexColor(
+      tokens["--canvas-free-point"],
+      defaultVisualState.freePointColor
+    );
+    debugVisualState.topologyLinkColor = normalizeHexColor(
+      tokens["--canvas-topology-link"],
+      defaultVisualState.topologyLinkColor
+    );
+    debugVisualState.freeLinkColor = normalizeHexColor(
+      tokens["--canvas-free-link"],
+      defaultVisualState.freeLinkColor
+    );
+    debugVisualState.crossLinkColor = normalizeHexColor(
+      tokens["--canvas-cross-link"],
+      defaultVisualState.crossLinkColor
+    );
+    debugVisualState.gradientStartColor = normalizeHexColor(
+      tokens["--canvas-gradient-start"],
+      defaultVisualState.gradientStartColor
+    );
+    debugVisualState.gradientEndColor = normalizeHexColor(
+      tokens["--canvas-gradient-end"],
+      defaultVisualState.gradientEndColor
+    );
+    debugVisualState.gridColor = parseColorLikeToHex(
+      tokens["--bg-grid-rgb"],
+      defaultVisualState.gridColor
+    );
+
+    const gridOpacity = Number(tokens["--bg-grid-opacity"]);
+    debugVisualState.gridOpacity = Number.isFinite(gridOpacity)
+      ? clamp(gridOpacity, 0, 1)
+      : defaultVisualState.gridOpacity;
+    const gridSize = Number(String(tokens["--bg-grid-size"] || "").replace("px", ""));
+    debugVisualState.gridSizePx = Number.isFinite(gridSize)
+      ? clamp(gridSize, 12, 96)
+      : defaultVisualState.gridSizePx;
+  }
 
   function applyGridDebugVars() {
     const root = document.documentElement;
@@ -398,6 +769,16 @@ function initBackground(canvasEl, config, initialTemplates) {
       "--bg-grid-size",
       `${Math.round(clamp(debugVisualState.gridSizePx, 12, 96))}px`
     );
+  }
+
+  function handleThemeTokensApplied(event) {
+    const nextTokens =
+      event?.detail?.tokens && typeof event.detail.tokens === "object"
+        ? event.detail.tokens
+        : readThemeTokensFromRoot();
+    syncVisualStateFromThemeTokens(nextTokens);
+    Object.assign(defaultVisualState, cloneDeep(debugVisualState));
+    applyGridDebugVars();
   }
 
   function lineWidthWithScale() {
@@ -1114,11 +1495,19 @@ function initBackground(canvasEl, config, initialTemplates) {
     const gradientAlphaScale = clamp(debugVisualState.gradientAlphaScale, 0, 2);
     const gradientStartAlpha = (0.09 * gradientAlphaScale).toFixed(3);
     const gradientEndAlpha = (0.05 * gradientAlphaScale).toFixed(3);
+    const gradientStartRgb = hexToRgbComma(
+      debugVisualState.gradientStartColor,
+      defaultVisualState.gradientStartColor
+    );
+    const gradientEndRgb = hexToRgbComma(
+      debugVisualState.gradientEndColor,
+      defaultVisualState.gradientEndColor
+    );
 
     context.clearRect(0, 0, window.innerWidth, window.innerHeight);
     const gradient = context.createLinearGradient(0, 0, window.innerWidth, window.innerHeight);
-    gradient.addColorStop(0, `rgba(43, 210, 187, ${gradientStartAlpha})`);
-    gradient.addColorStop(1, `rgba(255, 207, 102, ${gradientEndAlpha})`);
+    gradient.addColorStop(0, `rgba(${gradientStartRgb}, ${gradientStartAlpha})`);
+    gradient.addColorStop(1, `rgba(${gradientEndRgb}, ${gradientEndAlpha})`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, window.innerWidth, window.innerHeight);
 
@@ -1202,6 +1591,7 @@ function initBackground(canvasEl, config, initialTemplates) {
     const sampling = mode.sampling;
     let geometryDirty = false;
     let gridDirty = false;
+    let timingDirty = false;
 
     const colorKeys = [
       "boundPointColor",
@@ -1209,6 +1599,8 @@ function initBackground(canvasEl, config, initialTemplates) {
       "topologyLinkColor",
       "freeLinkColor",
       "crossLinkColor",
+      "gradientStartColor",
+      "gradientEndColor",
       "gridColor",
     ];
 
@@ -1235,6 +1627,9 @@ function initBackground(canvasEl, config, initialTemplates) {
       "gridOpacity",
       "gridSizePx",
       "gradientAlphaScale",
+      "holdMs",
+      "crumbleMs",
+      "rebuildMs",
       "boundBoundStrength",
       "freeFreeStrength",
       "freeBoundStrength",
@@ -1308,6 +1703,15 @@ function initBackground(canvasEl, config, initialTemplates) {
         gridDirty = true;
       } else if (key === "gradientAlphaScale") {
         debugVisualState.gradientAlphaScale = clamp(value, 0, 2);
+      } else if (key === "holdMs") {
+        config.phase.holdMs = Math.max(2000, Math.floor(value));
+        timingDirty = true;
+      } else if (key === "crumbleMs") {
+        config.phase.crumbleMs = Math.max(800, Math.floor(value));
+        timingDirty = true;
+      } else if (key === "rebuildMs") {
+        config.phase.rebuildMs = Math.max(1200, Math.floor(value));
+        timingDirty = true;
       } else if (key === "boundBoundStrength") {
         debugInteractionState.boundBoundStrength = clamp(value, 0, 2);
       } else if (key === "freeFreeStrength") {
@@ -1319,6 +1723,10 @@ function initBackground(canvasEl, config, initialTemplates) {
       } else if (key === "clusterAdjacencySpan") {
         debugInteractionState.clusterAdjacencySpan = Math.floor(clamp(value, 0, 4));
       }
+    }
+
+    if (timingDirty) {
+      config.phase.cycleMs = config.phase.holdMs + config.phase.crumbleMs + config.phase.rebuildMs;
     }
 
     if (gridDirty) applyGridDebugVars();
@@ -1365,6 +1773,10 @@ function initBackground(canvasEl, config, initialTemplates) {
 
   function resetDebugOverrides() {
     Object.keys(defaultProfileState).forEach((preset) => restoreProfileDefaults(preset));
+    config.phase.cycleMs = defaultPhaseState.cycleMs;
+    config.phase.holdMs = defaultPhaseState.holdMs;
+    config.phase.crumbleMs = defaultPhaseState.crumbleMs;
+    config.phase.rebuildMs = defaultPhaseState.rebuildMs;
     config.structureMode.maxLinksPerParticle = defaultStructureState.maxLinksPerParticle;
     config.structureMode.alphaCap = defaultStructureState.alphaCap;
     config.structureMode.reactionRadiusPx = defaultStructureState.reactionRadiusPx;
@@ -1408,12 +1820,17 @@ function initBackground(canvasEl, config, initialTemplates) {
       topologyLinkColor: debugVisualState.topologyLinkColor,
       freeLinkColor: debugVisualState.freeLinkColor,
       crossLinkColor: debugVisualState.crossLinkColor,
+      gradientStartColor: debugVisualState.gradientStartColor,
+      gradientEndColor: debugVisualState.gradientEndColor,
       gridColor: debugVisualState.gridColor,
       pointSizeScale: debugVisualState.pointSizeScale,
       linkWidthPx: debugVisualState.linkWidthPx,
       gridOpacity: debugVisualState.gridOpacity,
       gridSizePx: debugVisualState.gridSizePx,
       gradientAlphaScale: debugVisualState.gradientAlphaScale,
+      holdMs: config.phase.holdMs,
+      crumbleMs: config.phase.crumbleMs,
+      rebuildMs: config.phase.rebuildMs,
       boundBoundStrength: debugInteractionState.boundBoundStrength,
       freeFreeStrength: debugInteractionState.freeFreeStrength,
       freeBoundStrength: debugInteractionState.freeBoundStrength,
@@ -1452,14 +1869,16 @@ function initBackground(canvasEl, config, initialTemplates) {
     pause();
     window.removeEventListener("resize", handleResize);
     prefersReduced.removeEventListener("change", handleMotionPreferenceChange);
+    window.removeEventListener(THEME_TOKENS_APPLIED_EVENT, handleThemeTokensApplied);
   }
 
-  applyGridDebugVars();
+  handleThemeTokensApplied({ detail: { tokens: readThemeTokensFromRoot() } });
   resizeCanvas();
   rebuildAnchors();
   createParticles();
   window.addEventListener("resize", handleResize);
   prefersReduced.addEventListener("change", handleMotionPreferenceChange);
+  window.addEventListener(THEME_TOKENS_APPLIED_EVENT, handleThemeTokensApplied);
   lastFrameTime = performance.now();
   rafId = requestAnimationFrame(tick);
 
@@ -1526,6 +1945,11 @@ function setupMapInteractions(backgroundEngine) {
 function setupBackgroundTestControls(backgroundEngine) {
   if (!backgroundTestMode) return;
   if (!backgroundEngine || typeof backgroundEngine.getDebugState !== "function") return;
+
+  const persistedState = readBackgroundTestState();
+  if (persistedState && typeof persistedState === "object") {
+    backgroundEngine.applyDebugOverrides(persistedState);
+  }
 
   const state = backgroundEngine.getDebugState();
   if (!state) return;
@@ -1635,6 +2059,33 @@ function setupBackgroundTestControls(backgroundEngine) {
     },
     { tab: "animation", key: "noise", label: "Noise", type: "range", min: 0, max: 0.3, step: 0.005 },
     { tab: "animation", key: "fps", label: "FPS Target", type: "range", min: 8, max: 60, step: 1 },
+    {
+      tab: "animation",
+      key: "holdMs",
+      label: "Hold Ms",
+      type: "range",
+      min: 4000,
+      max: 30000,
+      step: 100,
+    },
+    {
+      tab: "animation",
+      key: "crumbleMs",
+      label: "Crumble Ms",
+      type: "range",
+      min: 1000,
+      max: 12000,
+      step: 100,
+    },
+    {
+      tab: "animation",
+      key: "rebuildMs",
+      label: "Rebuild Ms",
+      type: "range",
+      min: 2000,
+      max: 16000,
+      step: 100,
+    },
     {
       tab: "animation",
       key: "sampleStepPx",
@@ -1861,6 +2312,20 @@ function setupBackgroundTestControls(backgroundEngine) {
     entry.output.textContent = number.toFixed(decimalPlaces(entry.control.step || 1));
   }
 
+  function pickPersistedValues(snapshot) {
+    if (!snapshot || typeof snapshot !== "object") return {};
+    const payload = {};
+    controls.forEach((control) => {
+      if (!(control.key in snapshot)) return;
+      payload[control.key] = snapshot[control.key];
+    });
+    return payload;
+  }
+
+  function persistFromSnapshot(snapshot) {
+    writeBackgroundTestState(pickPersistedValues(snapshot));
+  }
+
   controls.forEach((control) => {
     const row = document.createElement("label");
     row.className = "bg-test-control-row";
@@ -1892,6 +2357,7 @@ function setupBackgroundTestControls(backgroundEngine) {
         input.value = normalizeHexColor(String(display), "#ffffff");
       }
       updateOutput({ control, output }, display);
+      if (snapshot) persistFromSnapshot(snapshot);
     });
     controlMap.set(control.key, { input, output, control });
     panelByTab.get(control.tab)?.appendChild(row);
@@ -1949,12 +2415,16 @@ function setupBackgroundTestControls(backgroundEngine) {
       if (!preset) return;
       backgroundEngine.applyDebugPreset(preset);
       syncFromState();
+      const snapshot = backgroundEngine.getDebugState();
+      if (snapshot) persistFromSnapshot(snapshot);
     });
   });
 
   panel.querySelector('button[data-action="reset"]')?.addEventListener("click", () => {
     backgroundEngine.resetDebugOverrides();
     syncFromState();
+    const snapshot = backgroundEngine.getDebugState();
+    if (snapshot) persistFromSnapshot(snapshot);
   });
 
   pauseButton?.addEventListener("click", () => {
@@ -1965,6 +2435,664 @@ function setupBackgroundTestControls(backgroundEngine) {
 
   setTab(activeTab);
   syncFromState();
+}
+
+function setupThemeEditorControls(initialThemeName = "custom") {
+  if (!themeEditorMode) return;
+
+  const tabs = [
+    { id: "palette", label: "Palette" },
+    { id: "surface-grid", label: "Surface/Grid" },
+    { id: "components", label: "Components" },
+    { id: "canvas", label: "Canvas" },
+  ];
+  const controls = [
+    { tab: "palette", key: "--bg", label: "Background", type: "color" },
+    { tab: "palette", key: "--bg-soft", label: "Background Soft", type: "color" },
+    { tab: "palette", key: "--bg-radial-start", label: "Radial Start", type: "color" },
+    { tab: "palette", key: "--bg-radial-end", label: "Radial End", type: "color" },
+    { tab: "palette", key: "--text", label: "Text", type: "color" },
+    { tab: "palette", key: "--text-dim", label: "Text Dim", type: "color" },
+    { tab: "palette", key: "--accent", label: "Accent", type: "color" },
+    { tab: "palette", key: "--accent-warm", label: "Accent Warm", type: "color" },
+    { tab: "palette", key: "--danger", label: "Danger", type: "color" },
+    {
+      tab: "surface-grid",
+      key: "--surface",
+      label: "Surface",
+      type: "rgba",
+      placeholder: "rgba(15, 34, 48, 0.72)",
+    },
+    {
+      tab: "surface-grid",
+      key: "--surface-strong",
+      label: "Surface Strong",
+      type: "rgba",
+      placeholder: "rgba(12, 28, 39, 0.9)",
+    },
+    {
+      tab: "surface-grid",
+      key: "--line",
+      label: "Line",
+      type: "rgba",
+      placeholder: "rgba(125, 176, 198, 0.24)",
+    },
+    {
+      tab: "surface-grid",
+      key: "--bg-grid-rgb",
+      label: "Grid Color",
+      type: "grid-rgb",
+      placeholder: "255 255 255",
+    },
+    {
+      tab: "surface-grid",
+      key: "--bg-grid-opacity",
+      label: "Grid Opacity",
+      type: "range",
+      min: 0,
+      max: 1,
+      step: 0.01,
+    },
+    {
+      tab: "surface-grid",
+      key: "--bg-grid-size",
+      label: "Grid Size",
+      type: "range",
+      min: 12,
+      max: 120,
+      step: 1,
+      unit: "px",
+    },
+    {
+      tab: "surface-grid",
+      key: "--shadow",
+      label: "Section Shadow",
+      type: "text",
+      placeholder: "0 16px 40px rgba(0, 0, 0, 0.34)",
+    },
+    {
+      tab: "surface-grid",
+      key: "--header-bg",
+      label: "Header Background",
+      type: "rgba",
+      placeholder: "rgba(7, 19, 29, 0.68)",
+    },
+    {
+      tab: "surface-grid",
+      key: "--nav-hover-bg",
+      label: "Nav Hover",
+      type: "rgba",
+      placeholder: "rgba(43, 210, 187, 0.14)",
+    },
+    {
+      tab: "components",
+      key: "--control-panel-border",
+      label: "Panel Border",
+      type: "rgba",
+      placeholder: "rgba(125, 176, 198, 0.35)",
+    },
+    {
+      tab: "components",
+      key: "--control-panel-bg",
+      label: "Panel Background",
+      type: "rgba",
+      placeholder: "rgba(5, 15, 24, 0.82)",
+    },
+    {
+      tab: "components",
+      key: "--control-panel-shadow",
+      label: "Panel Shadow",
+      type: "text",
+      placeholder: "0 10px 26px rgba(0, 0, 0, 0.4)",
+    },
+    {
+      tab: "components",
+      key: "--control-btn-border",
+      label: "Control Button Border",
+      type: "rgba",
+      placeholder: "rgba(125, 176, 198, 0.45)",
+    },
+    {
+      tab: "components",
+      key: "--control-btn-bg",
+      label: "Control Button Bg",
+      type: "rgba",
+      placeholder: "rgba(14, 35, 47, 0.85)",
+    },
+    {
+      tab: "components",
+      key: "--control-tab-border",
+      label: "Control Tab Border",
+      type: "rgba",
+      placeholder: "rgba(125, 176, 198, 0.4)",
+    },
+    {
+      tab: "components",
+      key: "--control-tab-bg",
+      label: "Control Tab Bg",
+      type: "rgba",
+      placeholder: "rgba(11, 28, 40, 0.9)",
+    },
+    {
+      tab: "components",
+      key: "--theme-tab-active-bg",
+      label: "Theme Tab Active Bg",
+      type: "rgba",
+      placeholder: "rgba(255, 207, 102, 0.16)",
+    },
+    {
+      tab: "components",
+      key: "--theme-tab-active-border",
+      label: "Theme Tab Active Border",
+      type: "rgba",
+      placeholder: "rgba(255, 207, 102, 0.44)",
+    },
+    {
+      tab: "components",
+      key: "--bg-test-tab-active-bg",
+      label: "BgTest Tab Active Bg",
+      type: "rgba",
+      placeholder: "rgba(43, 210, 187, 0.18)",
+    },
+    {
+      tab: "components",
+      key: "--bg-test-tab-active-border",
+      label: "BgTest Tab Active Border",
+      type: "rgba",
+      placeholder: "rgba(43, 210, 187, 0.5)",
+    },
+    {
+      tab: "components",
+      key: "--control-input-border",
+      label: "Control Input Border",
+      type: "rgba",
+      placeholder: "rgba(125, 176, 198, 0.45)",
+    },
+    {
+      tab: "components",
+      key: "--control-input-bg",
+      label: "Control Input Bg",
+      type: "rgba",
+      placeholder: "rgba(16, 37, 49, 0.7)",
+    },
+    {
+      tab: "components",
+      key: "--section-gradient-start",
+      label: "Section Gradient Start",
+      type: "rgba",
+      placeholder: "rgba(15, 30, 43, 0.9)",
+    },
+    {
+      tab: "components",
+      key: "--section-gradient-mid",
+      label: "Section Gradient Mid",
+      type: "rgba",
+      placeholder: "rgba(9, 22, 33, 0.84)",
+    },
+    {
+      tab: "components",
+      key: "--section-gradient-end",
+      label: "Section Gradient End",
+      type: "rgba",
+      placeholder: "rgba(7, 17, 25, 0.89)",
+    },
+    { tab: "components", key: "--btn-primary-mid", label: "Primary Mid", type: "color" },
+    { tab: "components", key: "--btn-primary-end", label: "Primary End", type: "color" },
+    { tab: "components", key: "--btn-primary-text", label: "Primary Text", type: "color" },
+    {
+      tab: "components",
+      key: "--btn-primary-shadow",
+      label: "Primary Shadow",
+      type: "text",
+      placeholder: "0 8px 30px rgba(43, 210, 187, 0.35)",
+    },
+    {
+      tab: "components",
+      key: "--btn-ghost-border",
+      label: "Ghost Border",
+      type: "rgba",
+      placeholder: "rgba(255, 255, 255, 0.22)",
+    },
+    {
+      tab: "components",
+      key: "--btn-ghost-bg",
+      label: "Ghost Background",
+      type: "rgba",
+      placeholder: "rgba(255, 255, 255, 0.03)",
+    },
+    {
+      tab: "components",
+      key: "--card-active-border",
+      label: "Card Active Border",
+      type: "rgba",
+      placeholder: "rgba(255, 207, 102, 0.72)",
+    },
+    {
+      tab: "components",
+      key: "--map-shell-bg",
+      label: "Map Shell Bg",
+      type: "rgba",
+      placeholder: "rgba(4, 13, 20, 0.5)",
+    },
+    {
+      tab: "components",
+      key: "--map-bg-fill",
+      label: "Map Background Fill",
+      type: "rgba",
+      placeholder: "rgba(8, 20, 30, 0.88)",
+    },
+    {
+      tab: "components",
+      key: "--map-region-fill",
+      label: "Map Region Fill",
+      type: "rgba",
+      placeholder: "rgba(13, 41, 56, 0.6)",
+    },
+    {
+      tab: "components",
+      key: "--map-region-stroke",
+      label: "Map Region Stroke",
+      type: "rgba",
+      placeholder: "rgba(95, 157, 187, 0.35)",
+    },
+    {
+      tab: "components",
+      key: "--map-node-pulse-fill",
+      label: "Map Node Pulse Fill",
+      type: "rgba",
+      placeholder: "rgba(43, 210, 187, 0.12)",
+    },
+    {
+      tab: "components",
+      key: "--map-node-pulse-stroke",
+      label: "Map Node Pulse Stroke",
+      type: "rgba",
+      placeholder: "rgba(43, 210, 187, 0.35)",
+    },
+    {
+      tab: "components",
+      key: "--route-gradient-start",
+      label: "Route Gradient Start",
+      type: "color",
+    },
+    {
+      tab: "components",
+      key: "--route-gradient-end",
+      label: "Route Gradient End",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-bound-point",
+      label: "Bound Point",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-free-point",
+      label: "Free Point",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-topology-link",
+      label: "Topology Link",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-free-link",
+      label: "Free Link",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-cross-link",
+      label: "Cross Link",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-gradient-start",
+      label: "Gradient Start",
+      type: "color",
+    },
+    {
+      tab: "canvas",
+      key: "--canvas-gradient-end",
+      label: "Gradient End",
+      type: "color",
+    },
+  ];
+
+  const initialTokens = sanitizeThemeTokens(readThemeTokensFromRoot(), readThemeTokensFromRoot());
+  let activeThemeName = initialThemeName || "custom";
+
+  const panel = document.createElement("aside");
+  panel.id = "theme-editor-controls";
+  panel.setAttribute("aria-label", "Theme editor controls");
+
+  const tabButtonsHtml = tabs
+    .map(
+      (tab, index) => `
+      <button
+        type="button"
+        class="theme-editor-tab"
+        role="tab"
+        id="theme-tab-${tab.id}"
+        data-tab="${tab.id}"
+        aria-controls="theme-panel-${tab.id}"
+        aria-selected="${index === 0 ? "true" : "false"}"
+        tabindex="${index === 0 ? "0" : "-1"}"
+      >${tab.label}</button>
+    `
+    )
+    .join("");
+
+  const tabPanelsHtml = tabs
+    .map(
+      (tab, index) => `
+      <section
+        class="theme-editor-panel"
+        role="tabpanel"
+        id="theme-panel-${tab.id}"
+        aria-labelledby="theme-tab-${tab.id}"
+        ${index === 0 ? "" : "hidden"}
+      ></section>
+    `
+    )
+    .join("");
+
+  panel.innerHTML = `
+    <h2>Theme Editor</h2>
+    <p class="theme-editor-subtitle">Tune tokens while previewing full page layout</p>
+    <div class="theme-editor-actions" role="group" aria-label="Theme actions">
+      <button type="button" data-action="theme-dark">Dark</button>
+      <button type="button" data-action="theme-light">Light</button>
+      <button type="button" data-action="save">Save Theme File</button>
+      <button type="button" data-action="reset">Reset Theme</button>
+    </div>
+    <div class="theme-editor-tabs" role="tablist" aria-label="Theme editor tabs">
+      ${tabButtonsHtml}
+    </div>
+    ${tabPanelsHtml}
+  `;
+  document.body.appendChild(panel);
+
+  const panelByTab = new Map();
+  Array.from(panel.querySelectorAll(".theme-editor-panel")).forEach((node) => {
+    const id = node.id.replace("theme-panel-", "");
+    panelByTab.set(id, node);
+  });
+  const tabButtons = Array.from(panel.querySelectorAll(".theme-editor-tab"));
+  const tabPanels = Array.from(panel.querySelectorAll(".theme-editor-panel"));
+  const controlMap = new Map();
+  let activeTab = tabs[0].id;
+
+  function decimalPlaces(step) {
+    const text = String(step || 1);
+    const dot = text.indexOf(".");
+    return dot < 0 ? 0 : text.length - dot - 1;
+  }
+
+  function getCurrentTokens() {
+    return sanitizeThemeTokens(readThemeTokensFromRoot(), initialTokens);
+  }
+
+  function setTab(nextTab, focus = false) {
+    activeTab = tabs.some((tab) => tab.id === nextTab) ? nextTab : tabs[0].id;
+    tabButtons.forEach((button) => {
+      const selected = button.dataset.tab === activeTab;
+      button.setAttribute("aria-selected", selected ? "true" : "false");
+      button.tabIndex = selected ? 0 : -1;
+      if (selected && focus) button.focus();
+    });
+    tabPanels.forEach((tabPanel) => {
+      tabPanel.hidden = tabPanel.id !== `theme-panel-${activeTab}`;
+    });
+  }
+
+  async function applyNamedTheme(name) {
+    const loaded = await loadThemeFromFile(name, getCurrentTokens());
+    if (!loaded) return;
+    activeThemeName = loaded.name || name;
+    syncInputs();
+  }
+
+  function exportThemeToFile() {
+    const payload = {
+      version: THEME_FILE_VERSION,
+      name: activeThemeName,
+      tokens: getCurrentTokens(),
+    };
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.download = `logistruct-theme-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(downloadUrl);
+  }
+
+  function applySingleToken(key, rawValue) {
+    const tokens = getCurrentTokens();
+    const nextTokens = { ...tokens, [key]: rawValue };
+    const applied = applyThemeTokens(nextTokens);
+    return applied[key] || "";
+  }
+
+  function updateOutput(entry, value) {
+    if (!entry.output) return;
+    if (entry.control.type === "color") return;
+    if (entry.control.type === "rgba") {
+      const alpha = readRgbaAlpha(String(value || ""), 1);
+      entry.output.textContent = `a=${alpha.toFixed(2)}`;
+      return;
+    }
+    if (entry.control.type === "grid-rgb") {
+      entry.output.textContent = "rgb";
+      return;
+    }
+    if (entry.control.type === "range") {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return;
+      const unit = entry.control.unit || "";
+      entry.output.textContent = `${number.toFixed(decimalPlaces(entry.control.step))}${unit}`;
+      return;
+    }
+    entry.output.textContent = String(value);
+  }
+
+  function syncInputs() {
+    const tokens = getCurrentTokens();
+    controlMap.forEach((entry) => {
+      const value = tokens[entry.control.key];
+      if (entry.control.type === "color") {
+        const normalized = normalizeHexColor(value, "#ffffff");
+        entry.input.value = normalized;
+        if (entry.colorText) entry.colorText.value = normalized;
+        updateOutput(entry, normalized);
+        return;
+      }
+      if (entry.control.type === "rgba") {
+        const textValue = String(value || "");
+        const hex = parseColorLikeToHex(textValue, "#ffffff");
+        entry.input.value = textValue;
+        if (entry.colorPicker) entry.colorPicker.value = hex;
+        updateOutput(entry, textValue);
+        return;
+      }
+      if (entry.control.type === "grid-rgb") {
+        const textValue = String(value || "");
+        const hex = parseColorLikeToHex(textValue, "#ffffff");
+        entry.input.value = textValue;
+        if (entry.colorPicker) entry.colorPicker.value = hex;
+        updateOutput(entry, textValue);
+        return;
+      } else if (entry.control.type === "range") {
+        const numeric = Number(String(value).replace("px", ""));
+        entry.input.value = Number.isFinite(numeric) ? String(numeric) : String(entry.control.min || 0);
+      } else {
+        entry.input.value = String(value || "");
+      }
+      updateOutput(entry, value);
+    });
+  }
+
+  controls.forEach((control) => {
+    const row = document.createElement("label");
+    row.className = "theme-editor-control-row";
+    const valueId = `theme-control-${control.key.replace(/[^a-z0-9_-]+/gi, "-")}`;
+
+    if (control.type === "color") {
+      row.innerHTML = `
+        <span class="theme-editor-control-name">${control.label}</span>
+        <input id="${valueId}" class="theme-editor-color-picker" type="color" />
+        <input class="theme-editor-color-value" type="text" />
+      `;
+    } else if (control.type === "rgba" || control.type === "grid-rgb") {
+      row.classList.add("theme-editor-control-row-color-text");
+      row.innerHTML = `
+        <span class="theme-editor-control-name">${control.label}</span>
+        <span class="theme-editor-color-combo">
+          <input id="${valueId}" class="theme-editor-color-picker" type="color" />
+          <input class="theme-editor-color-value" type="text" placeholder="${control.placeholder || ""}" />
+        </span>
+        <output></output>
+      `;
+    } else if (control.type === "range") {
+      row.innerHTML = `
+        <span class="theme-editor-control-name">${control.label}</span>
+        <input
+          id="${valueId}"
+          type="range"
+          min="${control.min}"
+          max="${control.max}"
+          step="${control.step}"
+        />
+        <output></output>
+      `;
+    } else {
+      row.innerHTML = `
+        <span class="theme-editor-control-name">${control.label}</span>
+        <input id="${valueId}" type="text" placeholder="${control.placeholder || ""}" />
+        <output></output>
+      `;
+    }
+
+    const colorPicker =
+      control.type === "color" || control.type === "rgba" || control.type === "grid-rgb"
+        ? row.querySelector(".theme-editor-color-picker")
+        : null;
+    const input = (() => {
+      if (control.type === "color") return colorPicker;
+      if (control.type === "rgba" || control.type === "grid-rgb")
+        return row.querySelector(".theme-editor-color-value");
+      return row.querySelector("input");
+    })();
+    const output = row.querySelector("output");
+    const colorText =
+      control.type === "color" ? row.querySelector(".theme-editor-color-value") : null;
+    if (!input) return;
+
+    if (control.type === "color") {
+      input.addEventListener("input", () => {
+        const normalized = applySingleToken(control.key, input.value);
+        const hex = normalizeHexColor(normalized, "#ffffff");
+        input.value = hex;
+        if (colorText) colorText.value = hex;
+      });
+
+      colorText?.addEventListener("change", () => {
+        const normalized = applySingleToken(control.key, colorText.value);
+        const hex = normalizeHexColor(normalized, "#ffffff");
+        input.value = hex;
+        colorText.value = hex;
+      });
+    } else if (control.type === "rgba") {
+      input.addEventListener("change", () => {
+        const normalized = applySingleToken(control.key, input.value);
+        input.value = String(normalized);
+        if (colorPicker) colorPicker.value = parseColorLikeToHex(String(normalized), "#ffffff");
+        updateOutput({ control, output }, normalized);
+      });
+
+      colorPicker?.addEventListener("input", () => {
+        const alpha = readRgbaAlpha(input.value, 1);
+        const rawValue = composeRgbaFromHex(colorPicker.value, alpha);
+        const normalized = applySingleToken(control.key, rawValue);
+        input.value = String(normalized);
+        colorPicker.value = parseColorLikeToHex(String(normalized), colorPicker.value);
+        updateOutput({ control, output }, normalized);
+      });
+    } else if (control.type === "grid-rgb") {
+      input.addEventListener("change", () => {
+        const normalized = applySingleToken(control.key, input.value);
+        input.value = String(normalized);
+        if (colorPicker) colorPicker.value = parseColorLikeToHex(String(normalized), "#ffffff");
+        updateOutput({ control, output }, normalized);
+      });
+
+      colorPicker?.addEventListener("input", () => {
+        const rawValue = hexToRgbSpace(colorPicker.value, "#ffffff");
+        const normalized = applySingleToken(control.key, rawValue);
+        input.value = String(normalized);
+        colorPicker.value = parseColorLikeToHex(String(normalized), colorPicker.value);
+        updateOutput({ control, output }, normalized);
+      });
+    } else {
+      const eventName = control.type === "text" ? "change" : "input";
+      input.addEventListener(eventName, () => {
+        const rawValue = input.value;
+        const normalized = applySingleToken(control.key, rawValue);
+        if (control.type === "text") input.value = String(normalized);
+        updateOutput({ control, output }, normalized);
+      });
+    }
+
+    controlMap.set(control.key, { control, input, output, colorText, colorPicker });
+    panelByTab.get(control.tab)?.appendChild(row);
+  });
+
+  tabButtons.forEach((button, index) => {
+    button.addEventListener("click", () => setTab(button.dataset.tab || tabs[0].id));
+    button.addEventListener("keydown", (event) => {
+      let nextIndex = null;
+      if (event.key === "ArrowRight") nextIndex = (index + 1) % tabButtons.length;
+      if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabButtons.length) % tabButtons.length;
+      if (event.key === "Home") nextIndex = 0;
+      if (event.key === "End") nextIndex = tabButtons.length - 1;
+      if (nextIndex != null) {
+        event.preventDefault();
+        const nextButton = tabButtons[nextIndex];
+        if (nextButton) setTab(nextButton.dataset.tab || tabs[0].id, true);
+        return;
+      }
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        setTab(button.dataset.tab || tabs[0].id, true);
+      }
+    });
+  });
+
+  panel
+    .querySelector('button[data-action="theme-dark"]')
+    ?.addEventListener("click", () => void applyNamedTheme("dark"));
+  panel
+    .querySelector('button[data-action="theme-light"]')
+    ?.addEventListener("click", () => void applyNamedTheme("light"));
+  panel.querySelector('button[data-action="save"]')?.addEventListener("click", exportThemeToFile);
+  panel.querySelector('button[data-action="reset"]')?.addEventListener("click", () => {
+    applyThemeTokens(initialTokens);
+    activeThemeName = initialThemeName || "custom";
+    syncInputs();
+  });
+
+  setTab(activeTab);
+  syncInputs();
 }
 
 function animateCounters() {
@@ -2001,7 +3129,15 @@ function setYear() {
   if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 }
 
-async function bootstrapBackground(backgroundTestMode = false) {
+async function bootstrapBackground(
+  backgroundTestMode = false,
+  themeEditorMode = false,
+  themeParamName = null
+) {
+  const baseTokens = readThemeTokensFromRoot();
+  const loadedTheme = await loadThemeFromFile(themeParamName, baseTokens);
+  const activeThemeName = loadedTheme?.name || themeParamName || "custom";
+
   const templates = await loadVectorTemplatesWithFallback();
   const engine = initBackground(canvas, engineConfig, templates);
   engine.setQuality(getMotionProfile());
@@ -2013,8 +3149,22 @@ async function bootstrapBackground(backgroundTestMode = false) {
   } else {
     setupBackgroundTestControls(engine);
   }
+
+  if (themeEditorMode) {
+    setupThemeEditorControls(activeThemeName);
+  }
 }
 
-const backgroundTestMode = isBackgroundTestMode();
+const searchParams = new URLSearchParams(window.location.search);
+let backgroundTestMode = isBackgroundTestMode(searchParams);
+let themeEditorMode = isThemeEditorMode(searchParams);
+if (backgroundTestMode && themeEditorMode) {
+  console.warn("[mode] Ignoring both special modes because bgTest=1 and themeEditor=1 are both set.");
+  backgroundTestMode = false;
+  themeEditorMode = false;
+}
+const themeParamName = getThemeParamName(searchParams);
+
 applyBackgroundTestMode(backgroundTestMode);
-bootstrapBackground(backgroundTestMode);
+applyThemeEditorMode(themeEditorMode);
+bootstrapBackground(backgroundTestMode, themeEditorMode, themeParamName);
