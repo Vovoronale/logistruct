@@ -133,6 +133,28 @@ test("index.html has required premium showcase sections", () => {
   );
 });
 
+test("index.html includes single-source intro contract and initial intro phase", () => {
+  const html = read("index.html");
+  assert.ok(
+    html.includes('data-intro-phase="idle"'),
+    "Body should declare initial intro phase"
+  );
+  assert.ok(
+    html.includes('class="brand-text"'),
+    "Primary brand text element is required for single-source intro"
+  );
+  assert.equal(
+    html.includes('id="intro-sequence"'),
+    false,
+    "Intro overlay container must be removed in single-source intro"
+  );
+  assert.equal(
+    html.includes('class="intro-brand-text"'),
+    false,
+    "Intro clone brand text marker must be removed"
+  );
+});
+
 test("index links static assets", () => {
   const html = read("index.html");
   assert.ok(
@@ -159,6 +181,78 @@ test("runtime script includes adaptive motion logic", () => {
   assert.ok(
     js.includes("downsampleTemplateForProfile"),
     "Profile-aware downsampling branch is required"
+  );
+});
+
+test("runtime script includes intro timeline orchestration and completion event", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("logistruct:intro-complete"),
+    "Intro completion event is required"
+  );
+  assert.ok(
+    js.includes("runIntroSequence"),
+    "Intro runtime orchestrator is required"
+  );
+  assert.ok(
+    js.includes("data-intro-phase"),
+    "Intro runtime should control body data-intro-phase state"
+  );
+  assert.ok(
+    js.includes("is-intro-scroll-lock"),
+    "Intro runtime should toggle intro scroll lock class"
+  );
+  assert.ok(
+    js.includes("fail-safe") || js.includes("failsafe"),
+    "Intro runtime should include fail-safe handling"
+  );
+  assert.ok(
+    js.includes('NAV: "nav"') &&
+      js.includes("setIntroPhase(INTRO_PHASES.NAV)") &&
+      js.includes("setIntroPhase(INTRO_PHASES.REVEAL)"),
+    "Intro runtime should include nav phase between move and reveal"
+  );
+  assert.ok(
+    js.includes("buildBrandCenterTransform") &&
+      js.includes("applyBrandIntroStartState") &&
+      js.includes("clearBrandInlineIntroState"),
+    "Intro runtime should use single-source brand transform helpers"
+  );
+  assert.equal(
+    js.includes("lockIntroLabelToBrandTarget"),
+    false,
+    "Intro runtime should not use clone handoff API"
+  );
+  assert.equal(
+    js.includes("is-intro-brand-lock"),
+    false,
+    "Intro runtime should not depend on brand-lock handoff class"
+  );
+  assert.equal(
+    js.includes("intro-brand-text"),
+    false,
+    "Intro runtime should not reference cloned intro brand text"
+  );
+  assert.equal(
+    js.includes("intro-sequence"),
+    false,
+    "Intro runtime should not query intro overlay container"
+  );
+});
+
+test("runtime script includes intro skip rules for special modes and reduced motion", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("backgroundTestMode || themeEditorMode"),
+    "Intro must skip in bgTest/themeEditor modes"
+  );
+  assert.ok(
+    js.includes("prefersReduced.matches"),
+    "Intro must include reduced-motion branch"
+  );
+  assert.ok(
+    js.includes("(max-width: 760px)") || js.includes("is-intro-mobile-nav-skip"),
+    "Intro must include mobile nav-expand skip logic"
   );
 });
 
@@ -340,6 +434,51 @@ test("styles define design system primitives", () => {
   assert.ok(css.includes("@keyframes"), "Animation keyframes are required");
 });
 
+test("styles include intro phase state contracts and nav expand rules", () => {
+  const css = read("assets/styles.css");
+  assert.equal(
+    css.includes("#intro-sequence"),
+    false,
+    "Intro overlay styles should be removed for single-source intro"
+  );
+  assert.equal(
+    css.includes(".intro-brand-text"),
+    false,
+    "Intro clone brand text styles should be removed"
+  );
+  assert.ok(
+    css.includes('data-intro-phase="hold"') &&
+      css.includes('data-intro-phase="move"') &&
+      css.includes('data-intro-phase="nav"') &&
+      css.includes('data-intro-phase="reveal"') &&
+      css.includes('data-intro-phase="done"') &&
+      css.includes('data-intro-phase="skip"') &&
+      css.includes('data-intro-phase="reduced"'),
+    "All intro phases should be represented in CSS state rules"
+  );
+  assert.ok(
+    css.includes("is-intro-scroll-lock"),
+    "Intro scroll lock class styles are required"
+  );
+  assert.ok(
+    css.includes("transform-origin: left"),
+    "Desktop menu expand should use left transform origin"
+  );
+  assert.ok(
+    css.includes('data-intro-phase="move"] .main-nav'),
+    "Move phase should explicitly keep nav hidden before nav phase starts"
+  );
+  assert.ok(
+    css.includes('data-intro-phase="nav"] .main-nav'),
+    "Nav phase should explicitly reveal desktop navigation"
+  );
+  assert.ok(
+    css.includes('data-intro-phase="nav"] .brand-mark') &&
+      css.includes('data-intro-phase="reveal"] .brand-mark'),
+    "Brand mark should remain hidden through nav and reveal after nav step"
+  );
+});
+
 test("runtime script supports bgTest mode toggle via URL query", () => {
   const js = read("assets/app.js");
   assert.ok(
@@ -380,8 +519,12 @@ test("runtime script skips non-background UI setup in bgTest mode", () => {
   const js = read("assets/app.js");
   assert.match(
     js,
-    /if\s*\(\s*!backgroundTestMode\s*\)\s*\{[\s\S]*setupMapInteractions\(engine\);[\s\S]*animateCounters\(\);[\s\S]*setYear\(\);[\s\S]*\}/,
+    /if\s*\(\s*!backgroundTestMode\s*\)\s*\{[\s\S]*setupMapInteractions\(engine\);[\s\S]*setYear\(\);[\s\S]*\}/,
     "bgTest mode must guard non-background UI setup"
+  );
+  assert.ok(
+    js.includes("onIntroComplete(() =>") && js.includes("animateCounters()"),
+    "Counter animation should be deferred until intro completion event"
   );
 });
 

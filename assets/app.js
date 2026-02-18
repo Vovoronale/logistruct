@@ -10,6 +10,44 @@ import {
 
 const canvas = document.getElementById("bg-canvas");
 const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+const INTRO_COMPLETE_EVENT = "logistruct:intro-complete";
+const INTRO_SCROLL_LOCK_CLASS = "is-intro-scroll-lock";
+const INTRO_MOBILE_SKIP_CLASS = "is-intro-mobile-nav-skip";
+const INTRO_CONTENT_REVEAL_CLASS = "is-intro-content-reveal";
+const INTRO_MOBILE_BREAKPOINT_QUERY = "(max-width: 760px)";
+const INTRO_BRAND_CENTER_SCALE = 2;
+const INTRO_BRAND_MOVE_EASING = "cubic-bezier(0.22, 0.61, 0.36, 1)";
+const INTRO_PHASES = {
+  IDLE: "idle",
+  HOLD: "hold",
+  MOVE: "move",
+  NAV: "nav",
+  REVEAL: "reveal",
+  DONE: "done",
+  SKIP: "skip",
+  REDUCED: "reduced",
+};
+const INTRO_TIMINGS = {
+  full: {
+    holdMs: 1700,
+    moveMs: 1300,
+    navMs: 700,
+    revealMs: 700,
+    failSafeMs: 6400,
+  },
+  short: {
+    holdMs: 1000,
+    moveMs: 850,
+    navMs: 420,
+    revealMs: 520,
+    failSafeMs: 4400,
+  },
+  reduced: {
+    totalMs: 400,
+    failSafeMs: 1200,
+  },
+};
+let introCompletionSnapshot = null;
 
 function isBackgroundTestMode(searchParams = new URLSearchParams(window.location.search)) {
   return searchParams.get("bgTest") === "1";
@@ -38,6 +76,219 @@ function applyThemeEditorMode(enabled) {
 
 function cloneDeep(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function waitForMs(ms = 0) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, Math.max(0, Math.round(ms)));
+  });
+}
+
+function waitForNextFrame() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+}
+
+async function waitForIntroFonts(maxWaitMs = 450) {
+  const fontSet = document.fonts;
+  if (!fontSet || !fontSet.ready) return;
+  await Promise.race([
+    Promise.resolve(fontSet.ready).catch(() => undefined),
+    waitForMs(maxWaitMs),
+  ]);
+}
+
+function setIntroPhase(phase) {
+  if (!document.body) return;
+  document.body.setAttribute("data-intro-phase", phase);
+}
+
+function getIntroPhase() {
+  if (!document.body) return INTRO_PHASES.IDLE;
+  return document.body.getAttribute("data-intro-phase") || INTRO_PHASES.IDLE;
+}
+
+function emitIntroComplete(detail = {}) {
+  const payload = {
+    phase: detail.phase || getIntroPhase(),
+    reason: detail.reason || "unknown",
+    timestampMs: performance.now(),
+  };
+  introCompletionSnapshot = payload;
+  window.dispatchEvent(
+    new CustomEvent(INTRO_COMPLETE_EVENT, {
+      detail: payload,
+    })
+  );
+  return payload;
+}
+
+function onIntroComplete(callback) {
+  if (typeof callback !== "function") return;
+  if (introCompletionSnapshot) {
+    callback(introCompletionSnapshot);
+    return;
+  }
+  window.addEventListener(
+    INTRO_COMPLETE_EVENT,
+    (event) => {
+      callback(event.detail || null);
+    },
+    { once: true }
+  );
+}
+
+function selectIntroMode() {
+  if (prefersReduced.matches) return "reduced";
+
+  const profile = getMotionProfile();
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const isConstrainedConnection = Boolean(
+    connection &&
+      (connection.saveData || /(^|-)2g$/i.test(String(connection.effectiveType || "")))
+  );
+
+  if (profile === "low" || isConstrainedConnection) return "short";
+  return "full";
+}
+
+function buildBrandCenterTransform(brandTextEl, centerScale = INTRO_BRAND_CENTER_SCALE) {
+  if (!brandTextEl) return null;
+  const targetRect = brandTextEl.getBoundingClientRect();
+  if (!targetRect.width || !targetRect.height) return null;
+
+  const viewportCenterX = window.innerWidth / 2;
+  const viewportCenterY = window.innerHeight / 2;
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+  const dx = viewportCenterX - targetCenterX;
+  const dy = viewportCenterY - targetCenterY;
+  const scale = clamp(Number(centerScale) || INTRO_BRAND_CENTER_SCALE, 1, 3.5);
+  return `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+}
+
+function applyBrandIntroStartState(brandTextEl, centerScale = INTRO_BRAND_CENTER_SCALE) {
+  if (!brandTextEl) return false;
+  const startTransform = buildBrandCenterTransform(brandTextEl, centerScale);
+  if (!startTransform) return false;
+  brandTextEl.style.transition = "none";
+  brandTextEl.style.transformOrigin = "center center";
+  brandTextEl.style.willChange = "transform";
+  brandTextEl.style.transform = startTransform;
+  void brandTextEl.getBoundingClientRect();
+  return true;
+}
+
+function clearBrandInlineIntroState(brandTextEl) {
+  if (!brandTextEl) return;
+  brandTextEl.style.removeProperty("transform");
+  brandTextEl.style.removeProperty("transition");
+  brandTextEl.style.removeProperty("will-change");
+  brandTextEl.style.removeProperty("transform-origin");
+}
+
+async function runIntroSequence({ backgroundTestMode = false, themeEditorMode = false } = {}) {
+  if (!document.body) {
+    return emitIntroComplete({
+      phase: INTRO_PHASES.SKIP,
+      reason: "missing-body",
+    });
+  }
+
+  const brandText = document.querySelector(".brand-text");
+  const shouldSkipIntro = backgroundTestMode || themeEditorMode || !brandText;
+
+  if (shouldSkipIntro) {
+    document.body.classList.remove(INTRO_SCROLL_LOCK_CLASS);
+    document.body.classList.remove(INTRO_MOBILE_SKIP_CLASS);
+    document.body.classList.remove(INTRO_CONTENT_REVEAL_CLASS);
+    clearBrandInlineIntroState(brandText);
+    setIntroPhase(INTRO_PHASES.SKIP);
+    return emitIntroComplete({
+      phase: INTRO_PHASES.SKIP,
+      reason: "backgroundTestMode || themeEditorMode || missing-brand-text",
+    });
+  }
+
+  let isCompleted = false;
+  let failSafeTimer = 0;
+  const complete = (
+    phase = INTRO_PHASES.DONE,
+    reason = "normal",
+    { preserveNavSkip = false } = {}
+  ) => {
+    if (isCompleted) return introCompletionSnapshot;
+    isCompleted = true;
+    if (failSafeTimer) window.clearTimeout(failSafeTimer);
+    if (preserveNavSkip) {
+      document.body.classList.add(INTRO_MOBILE_SKIP_CLASS);
+    }
+    setIntroPhase(phase);
+    clearBrandInlineIntroState(brandText);
+    document.body.classList.remove(INTRO_SCROLL_LOCK_CLASS);
+    document.body.classList.remove(INTRO_CONTENT_REVEAL_CLASS);
+    if (preserveNavSkip) {
+      window.setTimeout(() => {
+        if (!document.body) return;
+        document.body.classList.remove(INTRO_MOBILE_SKIP_CLASS);
+      }, 30);
+    } else {
+      document.body.classList.remove(INTRO_MOBILE_SKIP_CLASS);
+    }
+    return emitIntroComplete({ phase, reason });
+  };
+
+  try {
+    const mode = selectIntroMode();
+    const skipDesktopNavExpand = window.matchMedia(INTRO_MOBILE_BREAKPOINT_QUERY).matches;
+    clearBrandInlineIntroState(brandText);
+    document.body.classList.add(INTRO_SCROLL_LOCK_CLASS);
+    document.body.classList.toggle(INTRO_MOBILE_SKIP_CLASS, skipDesktopNavExpand);
+    document.body.classList.remove(INTRO_CONTENT_REVEAL_CLASS);
+
+    if (mode === "reduced") {
+      setIntroPhase(INTRO_PHASES.REDUCED);
+      failSafeTimer = window.setTimeout(
+        () => void complete(INTRO_PHASES.DONE, "reduced-fail-safe", { preserveNavSkip: true }),
+        INTRO_TIMINGS.reduced.failSafeMs
+      );
+      await waitForMs(INTRO_TIMINGS.reduced.totalMs);
+      return complete(INTRO_PHASES.DONE, "reduced", { preserveNavSkip: true });
+    }
+
+    const timing = mode === "short" ? INTRO_TIMINGS.short : INTRO_TIMINGS.full;
+    failSafeTimer = window.setTimeout(
+      () => void complete(INTRO_PHASES.DONE, "fail-safe"),
+      timing.failSafeMs
+    );
+
+    await waitForIntroFonts();
+    if (!applyBrandIntroStartState(brandText, INTRO_BRAND_CENTER_SCALE)) {
+      return complete(INTRO_PHASES.DONE, "missing-brand-geometry");
+    }
+    setIntroPhase(INTRO_PHASES.HOLD);
+    await waitForNextFrame();
+    await waitForMs(timing.holdMs);
+
+    setIntroPhase(INTRO_PHASES.MOVE);
+    await waitForNextFrame();
+    brandText.style.transition = `transform ${timing.moveMs}ms ${INTRO_BRAND_MOVE_EASING}`;
+    brandText.style.transform = "translate3d(0, 0, 0) scale(1)";
+    await waitForMs(timing.moveMs);
+
+    setIntroPhase(INTRO_PHASES.NAV);
+    await waitForMs(skipDesktopNavExpand ? 0 : timing.navMs);
+
+    setIntroPhase(INTRO_PHASES.REVEAL);
+    document.body.classList.add(INTRO_CONTENT_REVEAL_CLASS);
+    await waitForMs(timing.revealMs);
+
+    return complete(INTRO_PHASES.DONE, mode === "short" ? "adaptive-short" : "full");
+  } catch (error) {
+    console.warn("[intro] sequence failed, applying fail-safe:", error);
+    return complete(INTRO_PHASES.DONE, "error-fail-safe");
+  }
 }
 
 const profileConfig = {
@@ -3144,7 +3395,6 @@ async function bootstrapBackground(
 
   if (!backgroundTestMode) {
     setupMapInteractions(engine);
-    animateCounters();
     setYear();
   } else {
     setupBackgroundTestControls(engine);
@@ -3153,6 +3403,8 @@ async function bootstrapBackground(
   if (themeEditorMode) {
     setupThemeEditorControls(activeThemeName);
   }
+
+  return engine;
 }
 
 const searchParams = new URLSearchParams(window.location.search);
@@ -3167,4 +3419,14 @@ const themeParamName = getThemeParamName(searchParams);
 
 applyBackgroundTestMode(backgroundTestMode);
 applyThemeEditorMode(themeEditorMode);
-bootstrapBackground(backgroundTestMode, themeEditorMode, themeParamName);
+runIntroSequence({ backgroundTestMode, themeEditorMode });
+bootstrapBackground(backgroundTestMode, themeEditorMode, themeParamName)
+  .then(() => {
+    if (backgroundTestMode) return;
+    onIntroComplete(() => {
+      animateCounters();
+    });
+  })
+  .catch((error) => {
+    console.warn("[bootstrap] failed:", error);
+  });
