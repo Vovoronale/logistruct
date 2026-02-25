@@ -1,0 +1,112 @@
+- generic [active] [ref=e1]:
+  - banner:
+    - link "L/S Logistruct":
+      - /url: "#hero"
+      - generic: L/S
+      - generic: Logistruct
+    - navigation "Main Navigation":
+      - link "Projects":
+        - /url: "#projects"
+      - link "Map":
+        - /url: "#map"
+      - link "Team":
+        - /url: "#team"
+      - link "Approach":
+        - /url: "#approach"
+      - link "Contact":
+        - /url: "#contact"
+  - main:
+    - generic:
+      - generic:
+        - paragraph: Project Engineering Organization
+        - heading "We shape logistics systems that perform under pressure." [level=1]
+        - paragraph: Premium planning, real-world execution, and data-driven decisions for complex industrial and infrastructure projects.
+        - generic:
+          - link "View Projects":
+            - /url: "#projects"
+          - link "Start a Conversation":
+            - /url: "#contact"
+      - generic "Performance Snapshot":
+        - article:
+          - paragraph: "32"
+          - paragraph: Delivered Programs
+        - article:
+          - paragraph: "14"
+          - paragraph: Regions Coordinated
+        - article:
+          - paragraph: "96"
+          - paragraph: On-time Milestones %
+    - generic:
+      - generic:
+        - paragraph: Selected Work
+        - heading "Projects" [level=2]
+      - generic:
+        - article:
+          - paragraph: Industrial
+          - heading "Dnipro Steel Hub Rebuild" [level=3]
+          - paragraph: Reconfigured inbound and outbound flows with staged construction phasing and zero downtime transfer windows.
+          - paragraph: Dnipro Region • Completed
+        - article:
+          - paragraph: Infrastructure
+          - heading "South River Terminal Upgrade" [level=3]
+          - paragraph: Introduced dynamic berth scheduling and resilient warehouse geometry for seasonal volume surges.
+          - paragraph: Odesa Region • Active
+        - article:
+          - paragraph: Supply Chain
+          - heading "Eastern Grain Corridor" [level=3]
+          - paragraph: Built a multi-node handoff model linking rail, storage, and road dispatch with improved buffer stability.
+          - paragraph: Kharkiv Region • Active
+    - generic:
+      - generic:
+        - paragraph: Geography Narrative
+        - heading "Story Map" [level=2]
+      - generic:
+        - img "Project map showing active delivery corridors":
+          - generic:
+            - generic:
+              - generic: Dnipro Steel Hub
+            - generic:
+              - generic: South River Terminal
+            - generic:
+              - generic: Eastern Grain Corridor
+    - generic:
+      - generic:
+        - paragraph: People
+        - heading "Team" [level=2]
+      - generic:
+        - article:
+          - heading "Olha Koval" [level=3]
+          - paragraph: Lead Systems Architect
+          - paragraph: Designs resilient logistics topology for phased infrastructure delivery.
+        - article:
+          - heading "Dmytro Honchar" [level=3]
+          - paragraph: Construction Program Lead
+          - paragraph: Coordinates multi-contractor execution with high-risk dependency control.
+        - article:
+          - heading "Iryna Melnyk" [level=3]
+          - paragraph: Data and Operations Analyst
+          - paragraph: Builds planning models that connect forecast variance to field decisions.
+    - generic:
+      - generic:
+        - paragraph: Method
+        - heading "Approach" [level=2]
+      - list:
+        - listitem:
+          - heading "Context Mapping" [level=3]
+          - paragraph: We model constraints, bottlenecks, and operational priorities before design starts.
+        - listitem:
+          - heading "Parametric Design" [level=3]
+          - paragraph: Layouts and capacities are tuned through variable-driven iterations and stress tests.
+        - listitem:
+          - heading "Execution Control" [level=3]
+          - paragraph: Field sequencing and supplier windows are synchronized with measurable checkpoints.
+    - generic:
+      - generic:
+        - paragraph: Contact
+        - heading "Let’s scope your next program." [level=2]
+        - paragraph: Send your project context and current constraints. We will return a focused response with milestones, risks, and decision options.
+      - link "hello@logistruct.com":
+        - /url: mailto:hello@logistruct.com
+  - contentinfo:
+    - paragraph: Logistruct • Engineering precision for logistics systems.
+    - paragraph: © 2026 Logistruct.

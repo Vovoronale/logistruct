@@ -1,0 +1,108 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e3]:
+    - link "L/S Logistruct" [ref=e4] [cursor=pointer]:
+      - /url: "#hero"
+      - generic [ref=e5]: L/S
+      - generic [ref=e6]: Logistruct
+    - navigation "Main Navigation" [ref=e7]:
+      - link "Projects" [ref=e8] [cursor=pointer]:
+        - /url: "#projects"
+      - link "Map" [ref=e9] [cursor=pointer]:
+        - /url: "#map"
+      - link "Team" [ref=e10] [cursor=pointer]:
+        - /url: "#team"
+      - link "Approach" [ref=e11] [cursor=pointer]:
+        - /url: "#approach"
+      - link "Contact" [ref=e12] [cursor=pointer]:
+        - /url: "#contact"
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - paragraph [ref=e16]: Project Engineering Organization
+        - heading "We shape logistics systems that perform under pressure." [level=1] [ref=e17]
+        - paragraph [ref=e18]: Premium planning, real-world execution, and data-driven decisions for complex industrial and infrastructure projects.
+        - generic [ref=e19]:
+          - link "View Projects" [ref=e20] [cursor=pointer]:
+            - /url: "#projects"
+          - link "Start a Conversation" [ref=e21] [cursor=pointer]:
+            - /url: "#contact"
+      - generic "Performance Snapshot" [ref=e22]:
+        - article [ref=e23]:
+          - paragraph [ref=e24]: "32"
+          - paragraph [ref=e25]: Delivered Programs
+        - article [ref=e26]:
+          - paragraph [ref=e27]: "14"
+          - paragraph [ref=e28]: Regions Coordinated
+        - article [ref=e29]:
+          - paragraph [ref=e30]: "96"
+          - paragraph [ref=e31]: On-time Milestones %
+    - generic [ref=e32]:
+      - generic [ref=e33]:
+        - paragraph [ref=e34]: Selected Work
+        - heading "Projects" [level=2] [ref=e35]
+      - generic [ref=e36]:
+        - article [ref=e37] [cursor=pointer]:
+          - paragraph [ref=e38]: Industrial
+          - heading "Dnipro Steel Hub Rebuild" [level=3] [ref=e39]
+          - paragraph [ref=e40]: Reconfigured inbound and outbound flows with staged construction phasing and zero downtime transfer windows.
+          - paragraph [ref=e41]: Dnipro Region • Completed
+        - article [ref=e42] [cursor=pointer]:
+          - paragraph [ref=e43]: Infrastructure
+          - heading "South River Terminal Upgrade" [level=3] [ref=e44]
+          - paragraph [ref=e45]: Introduced dynamic berth scheduling and resilient warehouse geometry for seasonal volume surges.
+          - paragraph [ref=e46]: Odesa Region • Active
+        - article [ref=e47] [cursor=pointer]:
+          - paragraph [ref=e48]: Supply Chain
+          - heading "Eastern Grain Corridor" [level=3] [ref=e49]
+          - paragraph [ref=e50]: Built a multi-node handoff model linking rail, storage, and road dispatch with improved buffer stability.
+          - paragraph [ref=e51]: Kharkiv Region • Active
+    - generic [ref=e52]:
+      - generic [ref=e53]:
+        - paragraph [ref=e54]: Geography Narrative
+        - heading "Story Map" [level=2] [ref=e55]
+      - img "Project map showing active delivery corridors" [ref=e57]:
+        - generic [ref=e65]:
+          - generic [ref=e69]: Dnipro Steel Hub
+          - generic [ref=e73]: South River Terminal
+          - generic [ref=e77]: Eastern Grain Corridor
+    - generic [ref=e78]:
+      - generic [ref=e79]:
+        - paragraph [ref=e80]: People
+        - heading "Team" [level=2] [ref=e81]
+      - generic [ref=e82]:
+        - article [ref=e83]:
+          - heading "Olha Koval" [level=3] [ref=e84]
+          - paragraph [ref=e85]: Lead Systems Architect
+          - paragraph [ref=e86]: Designs resilient logistics topology for phased infrastructure delivery.
+        - article [ref=e87]:
+          - heading "Dmytro Honchar" [level=3] [ref=e88]
+          - paragraph [ref=e89]: Construction Program Lead
+          - paragraph [ref=e90]: Coordinates multi-contractor execution with high-risk dependency control.
+        - article [ref=e91]:
+          - heading "Iryna Melnyk" [level=3] [ref=e92]
+          - paragraph [ref=e93]: Data and Operations Analyst
+          - paragraph [ref=e94]: Builds planning models that connect forecast variance to field decisions.
+    - generic [ref=e95]:
+      - generic [ref=e96]:
+        - paragraph [ref=e97]: Method
+        - heading "Approach" [level=2] [ref=e98]
+      - list [ref=e99]:
+        - listitem [ref=e100]:
+          - heading "Context Mapping" [level=3] [ref=e101]
+          - paragraph [ref=e102]: We model constraints, bottlenecks, and operational priorities before design starts.
+        - listitem [ref=e103]:
+          - heading "Parametric Design" [level=3] [ref=e104]
+          - paragraph [ref=e105]: Layouts and capacities are tuned through variable-driven iterations and stress tests.
+        - listitem [ref=e106]:
+          - heading "Execution Control" [level=3] [ref=e107]
+          - paragraph [ref=e108]: Field sequencing and supplier windows are synchronized with measurable checkpoints.
+    - generic [ref=e109]:
+      - generic [ref=e110]:
+        - paragraph [ref=e111]: Contact
+        - heading "Let’s scope your next program." [level=2] [ref=e112]
+        - paragraph [ref=e113]: Send your project context and current constraints. We will return a focused response with milestones, risks, and decision options.
+      - link "hello@logistruct.com" [ref=e114] [cursor=pointer]:
+        - /url: mailto:hello@logistruct.com
+  - contentinfo [ref=e115]:
+    - paragraph [ref=e116]: Logistruct • Engineering precision for logistics systems.
+    - paragraph [ref=e117]: © 2026 Logistruct.
