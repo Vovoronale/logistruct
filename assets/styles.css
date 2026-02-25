@@ -840,6 +840,7 @@ h3 {
   width: 100%;
   height: auto;
   display: block;
+  filter: invert(0.9) hue-rotate(168deg) saturate(1.15) brightness(1.06);
 }
 
 .map-bg {
