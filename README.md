@@ -17,3 +17,25 @@ python -m http.server 8000
 - Тема `default`: `http://localhost:8000/?theme=default`
 - Тема `light`: `http://localhost:8000/?theme=light`
 - Тема `dark`: `http://localhost:8000/?theme=dark`
+
+## Серверний конфіг відображення
+
+Файл конфігу:
+
+- `assets/config/site-settings.json`
+
+Поточна схема:
+
+```json
+{
+  "version": 1,
+  "backgroundType": "layered_sine_waves"
+}
+```
+
+Дозволені значення `backgroundType`:
+
+- `layered_sine_waves`
+- `topology`
+
+Зміни застосовуються після перезавантаження сторінки.

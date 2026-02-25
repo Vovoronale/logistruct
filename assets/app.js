@@ -446,6 +446,13 @@ const DEFAULT_DEBUG_INTERACTION_STATE = {
 };
 
 const BG_TEST_STORAGE_KEY = "bgTestControls:lastState:v1";
+const SITE_SETTINGS_FILE_VERSION = 1;
+const SITE_SETTINGS_PATH = "assets/config/site-settings.json";
+const SUPPORTED_BACKGROUND_TYPES = new Set(["topology", "layered_sine_waves"]);
+const DEFAULT_SITE_SETTINGS = Object.freeze({
+  version: SITE_SETTINGS_FILE_VERSION,
+  backgroundType: "layered_sine_waves",
+});
 const THEME_FILE_VERSION = 1;
 const THEME_TOKENS_APPLIED_EVENT = "logistruct:theme-tokens-applied";
 const THEME_TOKEN_KEYS = [
@@ -655,6 +662,34 @@ function parseThemeDocument(payload, fallbackTokens) {
     name,
     tokens: sanitizeThemeTokens(payload.tokens, fallbackTokens),
   };
+}
+
+function parseSiteSettingsDocument(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.version !== SITE_SETTINGS_FILE_VERSION) return null;
+  if (typeof payload.backgroundType !== "string") return null;
+
+  const backgroundType = payload.backgroundType.trim().toLowerCase();
+  if (!SUPPORTED_BACKGROUND_TYPES.has(backgroundType)) return null;
+
+  return {
+    version: SITE_SETTINGS_FILE_VERSION,
+    backgroundType,
+  };
+}
+
+async function loadSiteSettingsFromFile() {
+  try {
+    const response = await fetch(SITE_SETTINGS_PATH, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const parsed = parseSiteSettingsDocument(payload);
+    if (!parsed) throw new Error("Invalid site settings document");
+    return parsed;
+  } catch (error) {
+    console.warn(`[settings] failed to load ${SITE_SETTINGS_PATH}, using fallback:`, error);
+    return { ...DEFAULT_SITE_SETTINGS };
+  }
 }
 
 async function loadThemeFromFile(themeName, fallbackTokens) {
@@ -2147,6 +2182,192 @@ function initBackground(canvasEl, config, initialTemplates) {
   };
 }
 
+function initLayeredSineWavesBackground(canvasEl) {
+  if (!canvasEl) return createNoopEngine();
+  const context = canvasEl.getContext("2d");
+  if (!context) return createNoopEngine();
+
+  const sineProfileConfig = {
+    high: {
+      layers: 80,
+      points: 200,
+      waveAmplitude: 40,
+      fps: 60,
+      timeStep: 0.01,
+      lineStep: 20,
+      lineChance: 0.4,
+    },
+    medium: {
+      layers: 64,
+      points: 170,
+      waveAmplitude: 34,
+      fps: 50,
+      timeStep: 0.008,
+      lineStep: 24,
+      lineChance: 0.46,
+    },
+    low: {
+      layers: 44,
+      points: 130,
+      waveAmplitude: 28,
+      fps: 35,
+      timeStep: 0.006,
+      lineStep: 28,
+      lineChance: 0.52,
+    },
+    reduced: {
+      layers: 24,
+      points: 84,
+      waveAmplitude: 20,
+      fps: 14,
+      timeStep: 0.003,
+      lineStep: 34,
+      lineChance: 0.62,
+    },
+  };
+
+  let profile = getMotionProfile();
+  let running = true;
+  let rafId = 0;
+  let lastFrameMs = 0;
+  let time = 0;
+  let viewportWidth = window.innerWidth;
+  let viewportHeight = window.innerHeight;
+
+  function resizeCanvas() {
+    viewportWidth = Math.max(1, window.innerWidth);
+    viewportHeight = Math.max(1, window.innerHeight);
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    canvasEl.width = Math.max(1, Math.floor(viewportWidth * dpr));
+    canvasEl.height = Math.max(1, Math.floor(viewportHeight * dpr));
+    canvasEl.style.width = `${viewportWidth}px`;
+    canvasEl.style.height = `${viewportHeight}px`;
+    context.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawFrame(nowMs) {
+    if (!running) return;
+    const cfg = sineProfileConfig[profile] || sineProfileConfig.low;
+    const minFrameDelta = 1000 / cfg.fps;
+    const frameDelta = nowMs - lastFrameMs;
+
+    if (frameDelta >= minFrameDelta) {
+      context.clearRect(0, 0, viewportWidth, viewportHeight);
+      context.fillStyle = "#F0EEE6";
+      context.fillRect(0, 0, viewportWidth, viewportHeight);
+
+      time += cfg.timeStep;
+
+      for (let layer = 0; layer < cfg.layers; layer += 1) {
+        const layerPosition = (layer / cfg.layers) * viewportHeight * 0.8 + viewportHeight * 0.1;
+        const layerFrequency = 0.5 + layer * 0.03;
+        const layerPhase = time * 0.2 + layer * 0.05;
+        const layerAmplitude =
+          cfg.waveAmplitude * (0.5 + 0.5 * Math.sin(layer * 0.1 + time * 0.3));
+        const baseOpacity = 0.2 + 0.6 * Math.pow(Math.sin((layer / cfg.layers) * Math.PI), 2);
+        const timeEffect = 0.2 * Math.sin(time * 0.4 + layer * 0.1);
+        const opacity = clamp(baseOpacity + timeEffect, 0.1, 0.9);
+
+        context.beginPath();
+        context.strokeStyle = `rgba(50, 50, 50, ${opacity.toFixed(3)})`;
+        context.lineWidth = 0.6;
+
+        for (let i = 0; i <= cfg.points; i += 1) {
+          const x = (i / cfg.points) * viewportWidth;
+          let y = layerPosition;
+          y += layerAmplitude * Math.sin(x * 0.01 * layerFrequency + layerPhase);
+          y += layerAmplitude * 0.3 * Math.sin(x * 0.02 * layerFrequency + layerPhase * 1.5);
+          y += layerAmplitude * 0.2 * Math.sin(x * 0.04 * layerFrequency - layerPhase * 0.7);
+          y += layerAmplitude * 0.1 * Math.sin(x * 0.08 * layerFrequency + layerPhase * 2.3);
+
+          if (i === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+
+        context.stroke();
+      }
+
+      for (let x = 0; x < viewportWidth; x += cfg.lineStep) {
+        const gate = 0.5 + 0.5 * Math.sin(x * 0.03 + time * 0.8);
+        if (gate > cfg.lineChance) continue;
+
+        context.beginPath();
+        const opacity = clamp(0.1 + 0.2 * Math.sin(x * 0.05 + time), 0.05, 0.35);
+        context.strokeStyle = `rgba(50, 50, 50, ${opacity.toFixed(3)})`;
+        context.lineWidth = 0.3;
+
+        const startFactor = 0.5 + 0.5 * Math.sin(x * 0.02 + time * 0.6);
+        const endFactor = 0.5 + 0.5 * Math.cos(x * 0.018 + time * 0.7);
+        const startY = viewportHeight * 0.1 + startFactor * viewportHeight * 0.2;
+        const endY = viewportHeight * 0.7 + endFactor * viewportHeight * 0.2;
+
+        context.moveTo(x, startY);
+        context.lineTo(x, endY);
+        context.stroke();
+      }
+
+      lastFrameMs = nowMs;
+    }
+
+    rafId = requestAnimationFrame(drawFrame);
+  }
+
+  function setQuality(nextProfile) {
+    if (!sineProfileConfig[nextProfile]) return;
+    profile = nextProfile;
+  }
+
+  function handleResize() {
+    resizeCanvas();
+  }
+
+  function handleMotionPreferenceChange() {
+    setQuality(getMotionProfile());
+  }
+
+  function pause() {
+    running = false;
+    cancelAnimationFrame(rafId);
+  }
+
+  function resume() {
+    if (running) return;
+    running = true;
+    lastFrameMs = performance.now();
+    rafId = requestAnimationFrame(drawFrame);
+  }
+
+  function destroy() {
+    pause();
+    window.removeEventListener("resize", handleResize);
+    prefersReduced.removeEventListener("change", handleMotionPreferenceChange);
+  }
+
+  setQuality(getMotionProfile());
+  resizeCanvas();
+  window.addEventListener("resize", handleResize);
+  prefersReduced.addEventListener("change", handleMotionPreferenceChange);
+  lastFrameMs = performance.now();
+  rafId = requestAnimationFrame(drawFrame);
+
+  return {
+    setQuality,
+    setFocus() {},
+    applyDebugOverrides() {},
+    applyDebugPreset() {},
+    resetDebugOverrides() {},
+    getDebugState() {
+      return null;
+    },
+    isPaused() {
+      return !running;
+    },
+    pause,
+    resume,
+    destroy,
+  };
+}
+
 function setActiveProject(projectId) {
   const cards = document.querySelectorAll(".project-card[data-project]");
   const nodes = document.querySelectorAll("#story-map .node[data-project]");
@@ -3388,15 +3609,31 @@ async function bootstrapBackground(
   const baseTokens = readThemeTokensFromRoot();
   const loadedTheme = await loadThemeFromFile(themeParamName, baseTokens);
   const activeThemeName = loadedTheme?.name || themeParamName || "custom";
+  const siteSettings = await loadSiteSettingsFromFile();
+  const backgroundType = siteSettings.backgroundType;
+  let engine = createNoopEngine();
 
-  const templates = await loadVectorTemplatesWithFallback();
-  const engine = initBackground(canvas, engineConfig, templates);
+  try {
+    if (backgroundType === "topology") {
+      const templates = await loadVectorTemplatesWithFallback();
+      engine = initBackground(canvas, engineConfig, templates);
+    } else if (backgroundType === "layered_sine_waves") {
+      engine = initLayeredSineWavesBackground(canvas);
+    } else {
+      console.warn(`[background] unsupported backgroundType "${backgroundType}", using layered_sine_waves`);
+      engine = initLayeredSineWavesBackground(canvas);
+    }
+  } catch (error) {
+    console.warn(`[background] failed to initialize ${backgroundType} renderer:`, error);
+    engine = createNoopEngine();
+  }
+
   engine.setQuality(getMotionProfile());
 
   if (!backgroundTestMode) {
     setupMapInteractions(engine);
     setYear();
-  } else {
+  } else if (backgroundType === "topology") {
     setupBackgroundTestControls(engine);
   }
 

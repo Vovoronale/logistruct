@@ -17,6 +17,7 @@ test("demo site files exist", () => {
   read("assets/app.js");
   read("assets/background-templates.js");
   read("assets/vector-template-loader.js");
+  read("assets/config/site-settings.json");
   read("assets/themes/default.json");
   read("assets/themes/dark.json");
   read("assets/themes/light.json");
@@ -677,5 +678,63 @@ test("styles include full-page theme editor mode and controls", () => {
       !/body\.is-theme-editor\s+main[\s\S]*display:\s*none/.test(css) &&
       !/body\.is-theme-editor\s+\.site-footer[\s\S]*display:\s*none/.test(css),
     "Theme editor mode must not hide page foreground sections"
+  );
+});
+
+test("site settings file has required schema and supported background types", () => {
+  const raw = read("assets/config/site-settings.json");
+  const parsed = JSON.parse(raw);
+  assert.equal(parsed.version, 1, "Site settings schema version must be 1");
+  assert.ok(
+    typeof parsed.backgroundType === "string" && parsed.backgroundType.length > 0,
+    "backgroundType is required"
+  );
+  const supportedBackgroundTypes = new Set(["topology", "layered_sine_waves"]);
+  assert.ok(
+    supportedBackgroundTypes.has(parsed.backgroundType),
+    "backgroundType must be one of: topology, layered_sine_waves"
+  );
+});
+
+test("runtime script loads site settings from server config with no-store cache", () => {
+  const js = read("assets/app.js");
+  assert.ok(js.includes("assets/config/site-settings.json"), "Site settings config path is required");
+  assert.ok(
+    js.includes('cache: "no-store"') || js.includes("cache:'no-store'"),
+    "Site settings fetch must disable cache for per-reload freshness"
+  );
+  assert.ok(js.includes("loadSiteSettingsFromFile"), "Site settings loader function is required");
+  assert.ok(
+    js.includes("parseSiteSettingsDocument"),
+    "Site settings parser/validator is required"
+  );
+});
+
+test("runtime supports topology and layered_sine_waves background types with fallback", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("layered_sine_waves"),
+    "layered_sine_waves background type support is required"
+  );
+  assert.ok(js.includes("topology"), "topology background type support is required");
+  assert.ok(
+    js.includes("initLayeredSineWavesBackground"),
+    "Layered sine waves background initializer is required"
+  );
+  assert.ok(
+    js.includes("DEFAULT_SITE_SETTINGS") && js.includes('backgroundType: "layered_sine_waves"'),
+    "Default site settings fallback must use layered_sine_waves"
+  );
+});
+
+test("bgTest diagnostics panel remains topology-only when background type differs", () => {
+  const js = read("assets/app.js");
+  assert.ok(
+    js.includes("setupBackgroundTestControls(engine)"),
+    "Topology diagnostics setup call must remain present"
+  );
+  assert.ok(
+    js.includes('backgroundType === "topology"') || js.includes("backgroundType==='topology'"),
+    "bgTest panel should be gated to topology background type only"
   );
 });
