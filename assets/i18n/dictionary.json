@@ -1,0 +1,1252 @@
+{
+  "version": 1,
+  "locales": ["en", "uk", "pl", "nl", "ja"],
+  "entries": {
+    "site.title": {
+      "en": "Logistruct | Project Engineering Organization",
+      "uk": "Logistruct | Проєктно-інженерна організація",
+      "pl": "Logistruct | Organizacja inżynierii projektowej",
+      "nl": "Logistruct | Projectengineeringorganisatie",
+      "ja": "Logistruct | プロジェクトエンジニアリング組織"
+    },
+    "site.description": {
+      "en": "Logistruct designs and delivers complex logistics projects with engineering precision, visual clarity, and measurable outcomes.",
+      "uk": "Logistruct проєктує та реалізує складні логістичні проєкти з інженерною точністю, візуальною ясністю та вимірюваним результатом.",
+      "pl": "Logistruct projektuje i realizuje złożone projekty logistyczne z inżynierską precyzją, wizualną klarownością i mierzalnymi rezultatami.",
+      "nl": "Logistruct ontwerpt en levert complexe logistieke projecten met technische precisie, visuele helderheid en meetbare resultaten.",
+      "ja": "Logistructは、エンジニアリングの精度、視覚的な明瞭さ、測定可能な成果を備えた複雑な物流プロジェクトを設計・実行します。"
+    },
+    "nav.aria.main": {
+      "en": "Main Navigation",
+      "uk": "Головна навігація",
+      "pl": "Nawigacja główna",
+      "nl": "Hoofdnavigatie",
+      "ja": "メインナビゲーション"
+    },
+    "nav.projects": {
+      "en": "Projects",
+      "uk": "Проєкти",
+      "pl": "Projekty",
+      "nl": "Projecten",
+      "ja": "プロジェクト"
+    },
+    "nav.map": {
+      "en": "Map",
+      "uk": "Мапа",
+      "pl": "Mapa",
+      "nl": "Kaart",
+      "ja": "マップ"
+    },
+    "nav.team": {
+      "en": "Team",
+      "uk": "Команда",
+      "pl": "Zespół",
+      "nl": "Team",
+      "ja": "チーム"
+    },
+    "nav.approach": {
+      "en": "Approach",
+      "uk": "Підхід",
+      "pl": "Podejście",
+      "nl": "Aanpak",
+      "ja": "アプローチ"
+    },
+    "nav.contact": {
+      "en": "Contact",
+      "uk": "Контакт",
+      "pl": "Kontakt",
+      "nl": "Contact",
+      "ja": "お問い合わせ"
+    },
+    "lang.label": {
+      "en": "Language",
+      "uk": "Мова",
+      "pl": "Język",
+      "nl": "Taal",
+      "ja": "言語"
+    },
+    "lang.select_aria": {
+      "en": "Select language",
+      "uk": "Виберіть мову",
+      "pl": "Wybierz język",
+      "nl": "Selecteer taal",
+      "ja": "言語を選択"
+    },
+    "hero.eyebrow": {
+      "en": "Project Engineering Organization",
+      "uk": "Проєктно-інженерна організація",
+      "pl": "Organizacja inżynierii projektowej",
+      "nl": "Projectengineeringorganisatie",
+      "ja": "プロジェクトエンジニアリング組織"
+    },
+    "hero.heading_html": {
+      "en": "We shape <span class=\"highlight\">logistics systems</span> that perform under pressure.",
+      "uk": "Ми формуємо <span class=\"highlight\">логістичні системи</span>, що працюють під навантаженням.",
+      "pl": "Projektujemy <span class=\"highlight\">systemy logistyczne</span>, które działają pod presją.",
+      "nl": "Wij ontwerpen <span class=\"highlight\">logistieke systemen</span> die onder druk presteren.",
+      "ja": "私たちは、<span class=\"highlight\">物流システム</span>を高負荷環境でも機能するよう設計します。"
+    },
+    "hero.lede": {
+      "en": "Premium planning, real-world execution, and data-driven decisions for complex industrial and infrastructure projects.",
+      "uk": "Преміальне планування, практична реалізація та рішення на основі даних для складних промислових та інфраструктурних проєктів.",
+      "pl": "Zaawansowane planowanie, realna realizacja i decyzje oparte na danych dla złożonych projektów przemysłowych i infrastrukturalnych.",
+      "nl": "Premium planning, uitvoering in de praktijk en datagedreven beslissingen voor complexe industriële en infrastructuurprojecten.",
+      "ja": "複雑な産業・インフラ案件に向けて、高品質な計画、現場実行、データ駆動の意思決定を提供します。"
+    },
+    "hero.cta.projects": {
+      "en": "View Projects",
+      "uk": "Переглянути проєкти",
+      "pl": "Zobacz projekty",
+      "nl": "Bekijk projecten",
+      "ja": "プロジェクトを見る"
+    },
+    "hero.cta.contact": {
+      "en": "Start a Conversation",
+      "uk": "Почати розмову",
+      "pl": "Rozpocznij rozmowę",
+      "nl": "Start een gesprek",
+      "ja": "相談を始める"
+    },
+    "hero.metrics.aria": {
+      "en": "Performance Snapshot",
+      "uk": "Зріз результативності",
+      "pl": "Przegląd wyników",
+      "nl": "Prestatie-overzicht",
+      "ja": "パフォーマンス概要"
+    },
+    "hero.metrics.delivered": {
+      "en": "Delivered Programs",
+      "uk": "Реалізовані програми",
+      "pl": "Zrealizowane programy",
+      "nl": "Opgeleverde programma's",
+      "ja": "提供完了プログラム"
+    },
+    "hero.metrics.regions": {
+      "en": "Regions Coordinated",
+      "uk": "Координовані регіони",
+      "pl": "Koordynowane regiony",
+      "nl": "Gecoördineerde regio's",
+      "ja": "調整対応地域"
+    },
+    "hero.metrics.ontime": {
+      "en": "On-time Milestones %",
+      "uk": "Віхи вчасно, %",
+      "pl": "Kamienie milowe na czas, %",
+      "nl": "Op tijd behaalde mijlpalen, %",
+      "ja": "期限内達成マイルストーン %"
+    },
+    "projects.eyebrow": {
+      "en": "Selected Work",
+      "uk": "Обрані кейси",
+      "pl": "Wybrane realizacje",
+      "nl": "Geselecteerd werk",
+      "ja": "主要実績"
+    },
+    "projects.title": {
+      "en": "Projects",
+      "uk": "Проєкти",
+      "pl": "Projekty",
+      "nl": "Projecten",
+      "ja": "プロジェクト"
+    },
+    "projects.cards.steel.tag": {
+      "en": "Industrial",
+      "uk": "Промисловість",
+      "pl": "Przemysł",
+      "nl": "Industrie",
+      "ja": "産業"
+    },
+    "projects.cards.steel.title": {
+      "en": "Dnipro Steel Hub Rebuild",
+      "uk": "Dnipro Steel Hub Rebuild",
+      "pl": "Dnipro Steel Hub Rebuild",
+      "nl": "Dnipro Steel Hub Rebuild",
+      "ja": "Dnipro Steel Hub Rebuild"
+    },
+    "projects.cards.steel.summary": {
+      "en": "Reconfigured inbound and outbound flows with staged construction phasing and zero downtime transfer windows.",
+      "uk": "Перебудували вхідні та вихідні потоки з поетапним будівництвом і вікнами передачі без простою.",
+      "pl": "Przeprojektowaliśmy przepływy wejściowe i wyjściowe z etapową realizacją budowy i oknami transferu bez przestojów.",
+      "nl": "Instroom- en uitstroomstromen opnieuw ingericht met gefaseerde bouw en overdrachtsvensters zonder stilstand.",
+      "ja": "段階的施工と無停止の引き継ぎ時間帯を組み合わせ、入出荷フローを再設計しました。"
+    },
+    "projects.cards.steel.meta": {
+      "en": "Dnipro Region • Completed",
+      "uk": "Dnipro Region • Завершено",
+      "pl": "Dnipro Region • Zakończony",
+      "nl": "Dnipro Region • Voltooid",
+      "ja": "Dnipro Region • 完了"
+    },
+    "projects.cards.river.tag": {
+      "en": "Infrastructure",
+      "uk": "Інфраструктура",
+      "pl": "Infrastruktura",
+      "nl": "Infrastructuur",
+      "ja": "インフラ"
+    },
+    "projects.cards.river.title": {
+      "en": "South River Terminal Upgrade",
+      "uk": "South River Terminal Upgrade",
+      "pl": "South River Terminal Upgrade",
+      "nl": "South River Terminal Upgrade",
+      "ja": "South River Terminal Upgrade"
+    },
+    "projects.cards.river.summary": {
+      "en": "Introduced dynamic berth scheduling and resilient warehouse geometry for seasonal volume surges.",
+      "uk": "Запровадили динамічне планування причалів і стійку геометрію складу для сезонних піків обсягів.",
+      "pl": "Wdrożyliśmy dynamiczne harmonogramowanie nabrzeży i odporną geometrię magazynu na sezonowe skoki wolumenów.",
+      "nl": "Dynamische ligplaatsplanning en robuuste magazijngeometrie ingevoerd voor seizoenspieken in volume.",
+      "ja": "季節的な取扱量の急増に対応するため、動的バース計画と耐障害性の高い倉庫レイアウトを導入しました。"
+    },
+    "projects.cards.river.meta": {
+      "en": "Odesa Region • Active",
+      "uk": "Odesa Region • Активний",
+      "pl": "Odesa Region • Aktywny",
+      "nl": "Odesa Region • Actief",
+      "ja": "Odesa Region • 進行中"
+    },
+    "projects.cards.grain.tag": {
+      "en": "Supply Chain",
+      "uk": "Ланцюг постачання",
+      "pl": "Łańcuch dostaw",
+      "nl": "Toeleveringsketen",
+      "ja": "サプライチェーン"
+    },
+    "projects.cards.grain.title": {
+      "en": "Eastern Grain Corridor",
+      "uk": "Eastern Grain Corridor",
+      "pl": "Eastern Grain Corridor",
+      "nl": "Eastern Grain Corridor",
+      "ja": "Eastern Grain Corridor"
+    },
+    "projects.cards.grain.summary": {
+      "en": "Built a multi-node handoff model linking rail, storage, and road dispatch with improved buffer stability.",
+      "uk": "Побудували багатовузлову модель передачі, що пов'язує залізницю, зберігання й автодиспетчеризацію зі стабільнішими буферами.",
+      "pl": "Zbudowaliśmy model wielowęzłowego przekazania, łączący kolej, magazynowanie i transport drogowy przy lepszej stabilności buforów.",
+      "nl": "Een multi-node overdrachtsmodel gebouwd dat spoor, opslag en wegdispatch koppelt met stabielere buffers.",
+      "ja": "鉄道・保管・道路配車をつなぐマルチノード受け渡しモデルを構築し、バッファ安定性を向上させました。"
+    },
+    "projects.cards.grain.meta": {
+      "en": "Kharkiv Region • Active",
+      "uk": "Kharkiv Region • Активний",
+      "pl": "Kharkiv Region • Aktywny",
+      "nl": "Kharkiv Region • Actief",
+      "ja": "Kharkiv Region • 進行中"
+    },
+    "map.eyebrow": {
+      "en": "Geography Narrative",
+      "uk": "Географічна історія",
+      "pl": "Narracja geograficzna",
+      "nl": "Geografisch verhaal",
+      "ja": "地理ストーリー"
+    },
+    "map.title": {
+      "en": "Story Map",
+      "uk": "Story Map",
+      "pl": "Story Map",
+      "nl": "Story Map",
+      "ja": "ストーリーマップ"
+    },
+    "map.aria": {
+      "en": "Project map showing active delivery corridors",
+      "uk": "Карта проєктів з активними коридорами постачання",
+      "pl": "Mapa projektów pokazująca aktywne korytarze dostaw",
+      "nl": "Projectkaart met actieve leveringscorridors",
+      "ja": "稼働中の配送回廊を示すプロジェクトマップ"
+    },
+    "map.nodes.steel": {
+      "en": "Dnipro Steel Hub",
+      "uk": "Dnipro Steel Hub",
+      "pl": "Dnipro Steel Hub",
+      "nl": "Dnipro Steel Hub",
+      "ja": "Dnipro Steel Hub"
+    },
+    "map.nodes.river": {
+      "en": "South River Terminal",
+      "uk": "South River Terminal",
+      "pl": "South River Terminal",
+      "nl": "South River Terminal",
+      "ja": "South River Terminal"
+    },
+    "map.nodes.grain": {
+      "en": "Eastern Grain Corridor",
+      "uk": "Eastern Grain Corridor",
+      "pl": "Eastern Grain Corridor",
+      "nl": "Eastern Grain Corridor",
+      "ja": "Eastern Grain Corridor"
+    },
+    "team.eyebrow": {
+      "en": "People",
+      "uk": "Люди",
+      "pl": "Ludzie",
+      "nl": "Mensen",
+      "ja": "メンバー"
+    },
+    "team.title": {
+      "en": "Team",
+      "uk": "Команда",
+      "pl": "Zespół",
+      "nl": "Team",
+      "ja": "チーム"
+    },
+    "team.members.olha.role": {
+      "en": "Lead Systems Architect",
+      "uk": "Провідна системна архітекторка",
+      "pl": "Główna architektka systemów",
+      "nl": "Lead Systems Architect",
+      "ja": "リードシステムアーキテクト"
+    },
+    "team.members.olha.bio": {
+      "en": "Designs resilient logistics topology for phased infrastructure delivery.",
+      "uk": "Проєктує стійку логістичну топологію для поетапної реалізації інфраструктури.",
+      "pl": "Projektuje odporną topologię logistyczną dla etapowej realizacji infrastruktury.",
+      "nl": "Ontwerpt robuuste logistieke topologie voor gefaseerde infrastructuurlevering.",
+      "ja": "段階的なインフラ提供に向けた耐障害性の高い物流トポロジーを設計します。"
+    },
+    "team.members.dmytro.role": {
+      "en": "Construction Program Lead",
+      "uk": "Керівник будівельної програми",
+      "pl": "Lider programu budowlanego",
+      "nl": "Construction Program Lead",
+      "ja": "建設プログラムリード"
+    },
+    "team.members.dmytro.bio": {
+      "en": "Coordinates multi-contractor execution with high-risk dependency control.",
+      "uk": "Координує виконання між кількома підрядниками з контролем високоризикових залежностей.",
+      "pl": "Koordynuje realizację wielu wykonawców z kontrolą zależności o wysokim ryzyku.",
+      "nl": "Coördineert uitvoering met meerdere aannemers en beheert afhankelijkheden met hoog risico.",
+      "ja": "高リスクな依存関係を管理しながら、複数請負業者の実行を統括します。"
+    },
+    "team.members.iryna.role": {
+      "en": "Data and Operations Analyst",
+      "uk": "Аналітикиня даних та операцій",
+      "pl": "Analityczka danych i operacji",
+      "nl": "Data and Operations Analyst",
+      "ja": "データ・オペレーションアナリスト"
+    },
+    "team.members.iryna.bio": {
+      "en": "Builds planning models that connect forecast variance to field decisions.",
+      "uk": "Створює моделі планування, що пов'язують похибку прогнозу з рішеннями на місцях.",
+      "pl": "Tworzy modele planowania łączące odchylenia prognoz z decyzjami operacyjnymi.",
+      "nl": "Bouwt planningsmodellen die forecastafwijkingen koppelen aan veldbeslissingen.",
+      "ja": "予測の差異を現場判断につなぐ計画モデルを構築します。"
+    },
+    "approach.eyebrow": {
+      "en": "Method",
+      "uk": "Метод",
+      "pl": "Metoda",
+      "nl": "Methode",
+      "ja": "方法"
+    },
+    "approach.title": {
+      "en": "Approach",
+      "uk": "Підхід",
+      "pl": "Podejście",
+      "nl": "Aanpak",
+      "ja": "アプローチ"
+    },
+    "approach.items.context.title": {
+      "en": "Context Mapping",
+      "uk": "Мапування контексту",
+      "pl": "Mapowanie kontekstu",
+      "nl": "Context Mapping",
+      "ja": "コンテキストマッピング"
+    },
+    "approach.items.context.body": {
+      "en": "We model constraints, bottlenecks, and operational priorities before design starts.",
+      "uk": "До старту проєктування ми моделюємо обмеження, вузькі місця та операційні пріоритети.",
+      "pl": "Przed rozpoczęciem projektowania modelujemy ograniczenia, wąskie gardła i priorytety operacyjne.",
+      "nl": "Voor de ontwerpfase modelleren we beperkingen, knelpunten en operationele prioriteiten.",
+      "ja": "設計開始前に、制約・ボトルネック・運用優先度をモデリングします。"
+    },
+    "approach.items.parametric.title": {
+      "en": "Parametric Design",
+      "uk": "Параметричний дизайн",
+      "pl": "Projektowanie parametryczne",
+      "nl": "Parametrisch ontwerp",
+      "ja": "パラメトリック設計"
+    },
+    "approach.items.parametric.body": {
+      "en": "Layouts and capacities are tuned through variable-driven iterations and stress tests.",
+      "uk": "Планування і потужності налаштовуються через ітерації за змінними та стрес-тести.",
+      "pl": "Układy i moce dostrajamy poprzez iteracje sterowane parametrami i testy obciążeniowe.",
+      "nl": "Lay-outs en capaciteiten worden afgestemd via variabele-gedreven iteraties en stresstests.",
+      "ja": "レイアウトと能力は、変数駆動の反復とストレステストで最適化します。"
+    },
+    "approach.items.execution.title": {
+      "en": "Execution Control",
+      "uk": "Контроль виконання",
+      "pl": "Kontrola realizacji",
+      "nl": "Uitvoeringscontrole",
+      "ja": "実行コントロール"
+    },
+    "approach.items.execution.body": {
+      "en": "Field sequencing and supplier windows are synchronized with measurable checkpoints.",
+      "uk": "Польова послідовність і вікна постачальників синхронізуються з вимірюваними контрольними точками.",
+      "pl": "Sekwencję prac w terenie i okna dostaw synchronizujemy z mierzalnymi punktami kontrolnymi.",
+      "nl": "Veldfasering en leveranciersvensters worden gesynchroniseerd met meetbare checkpoints.",
+      "ja": "現場の工程順序とサプライヤー時間枠を、測定可能なチェックポイントで同期します。"
+    },
+    "contact.eyebrow": {
+      "en": "Contact",
+      "uk": "Контакт",
+      "pl": "Kontakt",
+      "nl": "Contact",
+      "ja": "お問い合わせ"
+    },
+    "contact.title": {
+      "en": "Let's scope your next program.",
+      "uk": "Сформуємо рамки вашої наступної програми.",
+      "pl": "Określmy zakres Twojego następnego programu.",
+      "nl": "Laten we de scope van je volgende programma bepalen.",
+      "ja": "次のプログラムのスコープを定義しましょう。"
+    },
+    "contact.body": {
+      "en": "Send your project context and current constraints. We will return a focused response with milestones, risks, and decision options.",
+      "uk": "Надішліть контекст проєкту та поточні обмеження. Ми повернемо сфокусовану відповідь із віхами, ризиками та варіантами рішень.",
+      "pl": "Prześlij kontekst projektu i aktualne ograniczenia. Odpowiemy konkretnie: kamienie milowe, ryzyka i opcje decyzji.",
+      "nl": "Stuur de context van je project en huidige beperkingen. We geven een gerichte reactie met mijlpalen, risico's en beslisopties.",
+      "ja": "プロジェクト背景と現在の制約を共有してください。マイルストーン、リスク、意思決定オプションを整理してご提案します。"
+    },
+    "footer.tagline": {
+      "en": "Logistruct • Engineering precision for logistics systems.",
+      "uk": "Logistruct • Інженерна точність для логістичних систем.",
+      "pl": "Logistruct • Inżynieryjna precyzja dla systemów logistycznych.",
+      "nl": "Logistruct • Technische precisie voor logistieke systemen.",
+      "ja": "Logistruct • 物流システムのためのエンジニアリング精度。"
+    },
+    "bgtest.aria.panel": {
+      "en": "Background test controls",
+      "uk": "Керування тестом фону",
+      "pl": "Sterowanie testem tła",
+      "nl": "Achtergrondtest-bediening",
+      "ja": "背景テスト操作"
+    },
+    "bgtest.title": {
+      "en": "bgTest Controls",
+      "uk": "Керування bgTest",
+      "pl": "Sterowanie bgTest",
+      "nl": "bgTest-bediening",
+      "ja": "bgTest コントロール"
+    },
+    "bgtest.subtitle": {
+      "en": "Live tuning for appearance, animation and interaction",
+      "uk": "Живе налаштування вигляду, анімації та взаємодії",
+      "pl": "Strojenie na żywo wyglądu, animacji i interakcji",
+      "nl": "Live afstemming van uiterlijk, animatie en interactie",
+      "ja": "外観・アニメーション・相互作用をライブ調整"
+    },
+    "bgtest.aria.presets": {
+      "en": "Quality presets",
+      "uk": "Пресети якості",
+      "pl": "Presety jakości",
+      "nl": "Kwaliteitspresets",
+      "ja": "品質プリセット"
+    },
+    "bgtest.aria.tabs": {
+      "en": "Control tabs",
+      "uk": "Вкладки керування",
+      "pl": "Zakładki sterowania",
+      "nl": "Bedieningstabbladen",
+      "ja": "コントロールタブ"
+    },
+    "bgtest.tab.appearance": {
+      "en": "Appearance",
+      "uk": "Зовнішній вигляд",
+      "pl": "Wygląd",
+      "nl": "Uiterlijk",
+      "ja": "外観"
+    },
+    "bgtest.tab.animation": {
+      "en": "Animation",
+      "uk": "Анімація",
+      "pl": "Animacja",
+      "nl": "Animatie",
+      "ja": "アニメーション"
+    },
+    "bgtest.tab.interaction": {
+      "en": "Group Interaction",
+      "uk": "Взаємодія груп",
+      "pl": "Interakcja grup",
+      "nl": "Groepsinteractie",
+      "ja": "グループ相互作用"
+    },
+    "bgtest.preset.high": {
+      "en": "High",
+      "uk": "Висока",
+      "pl": "Wysoki",
+      "nl": "Hoog",
+      "ja": "高"
+    },
+    "bgtest.preset.medium": {
+      "en": "Medium",
+      "uk": "Середня",
+      "pl": "Średni",
+      "nl": "Middel",
+      "ja": "中"
+    },
+    "bgtest.preset.low": {
+      "en": "Low",
+      "uk": "Низька",
+      "pl": "Niski",
+      "nl": "Laag",
+      "ja": "低"
+    },
+    "bgtest.action.reset": {
+      "en": "Reset",
+      "uk": "Скинути",
+      "pl": "Resetuj",
+      "nl": "Reset",
+      "ja": "リセット"
+    },
+    "bgtest.action.pause": {
+      "en": "Pause",
+      "uk": "Пауза",
+      "pl": "Pauza",
+      "nl": "Pauze",
+      "ja": "一時停止"
+    },
+    "bgtest.action.resume": {
+      "en": "Resume",
+      "uk": "Продовжити",
+      "pl": "Wznów",
+      "nl": "Hervatten",
+      "ja": "再開"
+    },
+    "bgtest.control.boundPointColor": {
+      "en": "Bound Color",
+      "uk": "Колір закріплених",
+      "pl": "Kolor powiązanych",
+      "nl": "Gebonden kleur",
+      "ja": "固定点カラー"
+    },
+    "bgtest.control.freePointColor": {
+      "en": "Free Color",
+      "uk": "Колір вільних",
+      "pl": "Kolor swobodnych",
+      "nl": "Vrije kleur",
+      "ja": "自由点カラー"
+    },
+    "bgtest.control.topologyLinkColor": {
+      "en": "Topology Color",
+      "uk": "Колір топології",
+      "pl": "Kolor topologii",
+      "nl": "Topologiekleur",
+      "ja": "トポロジーカラー"
+    },
+    "bgtest.control.freeLinkColor": {
+      "en": "Free Link Color",
+      "uk": "Колір вільних зв'язків",
+      "pl": "Kolor wolnych połączeń",
+      "nl": "Vrije verbindingskleur",
+      "ja": "自由リンクカラー"
+    },
+    "bgtest.control.crossLinkColor": {
+      "en": "Cross Link Color",
+      "uk": "Колір перехресних зв'язків",
+      "pl": "Kolor połączeń krzyżowych",
+      "nl": "Kruislinkkleur",
+      "ja": "クロスリンクカラー"
+    },
+    "bgtest.control.gridColor": {
+      "en": "Grid Color",
+      "uk": "Колір сітки",
+      "pl": "Kolor siatki",
+      "nl": "Rasterkleur",
+      "ja": "グリッドカラー"
+    },
+    "bgtest.control.pointSizeScale": {
+      "en": "Point Scale",
+      "uk": "Масштаб точок",
+      "pl": "Skala punktów",
+      "nl": "Puntschaal",
+      "ja": "ポイントスケール"
+    },
+    "bgtest.control.linkWidthPx": {
+      "en": "Link Width",
+      "uk": "Товщина ліній",
+      "pl": "Szerokość linii",
+      "nl": "Lijnbreedte",
+      "ja": "リンク幅"
+    },
+    "bgtest.control.gridOpacity": {
+      "en": "Grid Opacity",
+      "uk": "Прозорість сітки",
+      "pl": "Przezroczystość siatki",
+      "nl": "Rasterdekking",
+      "ja": "グリッド不透明度"
+    },
+    "bgtest.control.gridSizePx": {
+      "en": "Grid Size",
+      "uk": "Розмір сітки",
+      "pl": "Rozmiar siatki",
+      "nl": "Rastergrootte",
+      "ja": "グリッドサイズ"
+    },
+    "bgtest.control.gradientAlphaScale": {
+      "en": "Gradient Alpha",
+      "uk": "Альфа градієнта",
+      "pl": "Alfa gradientu",
+      "nl": "Gradient-alfa",
+      "ja": "グラデーションアルファ"
+    },
+    "bgtest.control.particleCount": {
+      "en": "Particles",
+      "uk": "Частинки",
+      "pl": "Cząstki",
+      "nl": "Deeltjes",
+      "ja": "粒子数"
+    },
+    "bgtest.control.freeRatio": {
+      "en": "Free Ratio",
+      "uk": "Частка вільних",
+      "pl": "Udział swobodnych",
+      "nl": "Vrije verhouding",
+      "ja": "自由比率"
+    },
+    "bgtest.control.driftSpeed": {
+      "en": "Drift Speed",
+      "uk": "Швидкість дрейфу",
+      "pl": "Prędkość dryfu",
+      "nl": "Driftsnelheid",
+      "ja": "ドリフト速度"
+    },
+    "bgtest.control.spring": {
+      "en": "Spring",
+      "uk": "Пружність",
+      "pl": "Sprężystość",
+      "nl": "Veer",
+      "ja": "スプリング"
+    },
+    "bgtest.control.damping": {
+      "en": "Damping",
+      "uk": "Демпфування",
+      "pl": "Tłumienie",
+      "nl": "Demping",
+      "ja": "減衰"
+    },
+    "bgtest.control.noise": {
+      "en": "Noise",
+      "uk": "Шум",
+      "pl": "Szum",
+      "nl": "Ruis",
+      "ja": "ノイズ"
+    },
+    "bgtest.control.fps": {
+      "en": "FPS Target",
+      "uk": "Ціль FPS",
+      "pl": "Docelowe FPS",
+      "nl": "FPS-doel",
+      "ja": "目標FPS"
+    },
+    "bgtest.control.holdMs": {
+      "en": "Hold Ms",
+      "uk": "Утримання, мс",
+      "pl": "Hold, ms",
+      "nl": "Hold ms",
+      "ja": "保持 ms"
+    },
+    "bgtest.control.crumbleMs": {
+      "en": "Crumble Ms",
+      "uk": "Розпад, мс",
+      "pl": "Rozpad, ms",
+      "nl": "Crumble ms",
+      "ja": "崩壊 ms"
+    },
+    "bgtest.control.rebuildMs": {
+      "en": "Rebuild Ms",
+      "uk": "Відновлення, мс",
+      "pl": "Odbudowa, ms",
+      "nl": "Herbouw ms",
+      "ja": "再構築 ms"
+    },
+    "bgtest.control.sampleStepPx": {
+      "en": "Sample Step",
+      "uk": "Крок семплування",
+      "pl": "Krok próbkowania",
+      "nl": "Sample-stap",
+      "ja": "サンプル間隔"
+    },
+    "bgtest.control.stitchMaxEdges": {
+      "en": "Stitch Max Edges",
+      "uk": "Макс. ребер зшивання",
+      "pl": "Maks. krawędzie łączenia",
+      "nl": "Max. stitch-randen",
+      "ja": "接続最大エッジ"
+    },
+    "bgtest.control.stitchMaxDistance": {
+      "en": "Stitch Max Dist",
+      "uk": "Макс. відстань зшивання",
+      "pl": "Maks. dystans łączenia",
+      "nl": "Max. stitch-afstand",
+      "ja": "接続最大距離"
+    },
+    "bgtest.control.linkDistance": {
+      "en": "Link Distance",
+      "uk": "Дистанція зв'язку",
+      "pl": "Dystans połączeń",
+      "nl": "Verbindingsafstand",
+      "ja": "リンク距離"
+    },
+    "bgtest.control.reactionRadiusPx": {
+      "en": "Reaction Radius",
+      "uk": "Радіус реакції",
+      "pl": "Promień reakcji",
+      "nl": "Reactieradius",
+      "ja": "反応半径"
+    },
+    "bgtest.control.topologyEdgeCap": {
+      "en": "Topology Edge Cap",
+      "uk": "Ліміт ребер топології",
+      "pl": "Limit krawędzi topologii",
+      "nl": "Topologie-randlimiet",
+      "ja": "トポロジーエッジ上限"
+    },
+    "bgtest.control.maxLinksPerParticle": {
+      "en": "Max Links/Point",
+      "uk": "Макс. зв'язків/точку",
+      "pl": "Maks. połączeń/punkt",
+      "nl": "Max. links/punt",
+      "ja": "最大リンク/点"
+    },
+    "bgtest.control.alphaCap": {
+      "en": "Alpha Cap",
+      "uk": "Ліміт альфи",
+      "pl": "Limit alfy",
+      "nl": "Alfa-limiet",
+      "ja": "アルファ上限"
+    },
+    "bgtest.control.weakLinkDistance": {
+      "en": "Weak Link Distance",
+      "uk": "Дистанція слабких зв'язків",
+      "pl": "Dystans słabych połączeń",
+      "nl": "Zwakke linkafstand",
+      "ja": "弱リンク距離"
+    },
+    "bgtest.control.weakAlphaCap": {
+      "en": "Weak Alpha Cap",
+      "uk": "Ліміт слабкої альфи",
+      "pl": "Limit słabej alfy",
+      "nl": "Zwakke alfa-limiet",
+      "ja": "弱アルファ上限"
+    },
+    "bgtest.control.boundBoundStrength": {
+      "en": "Bound-Bound Strength",
+      "uk": "Сила bound-bound",
+      "pl": "Siła bound-bound",
+      "nl": "Bound-bound sterkte",
+      "ja": "bound-bound 強度"
+    },
+    "bgtest.control.freeFreeStrength": {
+      "en": "Free-Free Strength",
+      "uk": "Сила free-free",
+      "pl": "Siła free-free",
+      "nl": "Free-free sterkte",
+      "ja": "free-free 強度"
+    },
+    "bgtest.control.freeBoundStrength": {
+      "en": "Free-Bound Strength",
+      "uk": "Сила free-bound",
+      "pl": "Siła free-bound",
+      "nl": "Free-bound sterkte",
+      "ja": "free-bound 強度"
+    },
+    "bgtest.control.freeBoundGateScale": {
+      "en": "Free-Bound Gate",
+      "uk": "Поріг free-bound",
+      "pl": "Bramka free-bound",
+      "nl": "Free-bound gate",
+      "ja": "free-bound ゲート"
+    },
+    "bgtest.control.clusterAdjacencySpan": {
+      "en": "Cluster Span",
+      "uk": "Охоплення кластера",
+      "pl": "Zasięg klastra",
+      "nl": "Clusterbereik",
+      "ja": "クラスタ範囲"
+    },
+    "theme.aria.panel": {
+      "en": "Theme editor controls",
+      "uk": "Керування редактором тем",
+      "pl": "Sterowanie edytorem motywu",
+      "nl": "Thema-editor bediening",
+      "ja": "テーマエディタ操作"
+    },
+    "theme.title": {
+      "en": "Theme Editor",
+      "uk": "Редактор тем",
+      "pl": "Edytor motywu",
+      "nl": "Thema-editor",
+      "ja": "テーマエディタ"
+    },
+    "theme.subtitle": {
+      "en": "Tune tokens while previewing full page layout",
+      "uk": "Налаштовуйте токени, переглядаючи повний макет сторінки",
+      "pl": "Dostrajal tokeny, podglądając pełny układ strony",
+      "nl": "Pas tokens aan met live voorbeeld van de volledige paginalayout",
+      "ja": "ページ全体のレイアウトを確認しながらトークンを調整"
+    },
+    "theme.aria.actions": {
+      "en": "Theme actions",
+      "uk": "Дії теми",
+      "pl": "Akcje motywu",
+      "nl": "Thema-acties",
+      "ja": "テーマ操作"
+    },
+    "theme.aria.tabs": {
+      "en": "Theme editor tabs",
+      "uk": "Вкладки редактора тем",
+      "pl": "Zakładki edytora motywu",
+      "nl": "Thema-editor tabbladen",
+      "ja": "テーマエディタタブ"
+    },
+    "theme.action.dark": {
+      "en": "Dark",
+      "uk": "Темна",
+      "pl": "Ciemny",
+      "nl": "Donker",
+      "ja": "ダーク"
+    },
+    "theme.action.light": {
+      "en": "Light",
+      "uk": "Світла",
+      "pl": "Jasny",
+      "nl": "Licht",
+      "ja": "ライト"
+    },
+    "theme.action.save": {
+      "en": "Save Theme File",
+      "uk": "Зберегти файл теми",
+      "pl": "Zapisz plik motywu",
+      "nl": "Themabestand opslaan",
+      "ja": "テーマファイルを保存"
+    },
+    "theme.action.reset": {
+      "en": "Reset Theme",
+      "uk": "Скинути тему",
+      "pl": "Resetuj motyw",
+      "nl": "Thema resetten",
+      "ja": "テーマをリセット"
+    },
+    "theme.tab.palette": {
+      "en": "Palette",
+      "uk": "Палітра",
+      "pl": "Paleta",
+      "nl": "Palet",
+      "ja": "パレット"
+    },
+    "theme.tab.surfaceGrid": {
+      "en": "Surface/Grid",
+      "uk": "Поверхня/Сітка",
+      "pl": "Powierzchnia/Siatka",
+      "nl": "Oppervlak/Raster",
+      "ja": "サーフェス/グリッド"
+    },
+    "theme.tab.components": {
+      "en": "Components",
+      "uk": "Компоненти",
+      "pl": "Komponenty",
+      "nl": "Componenten",
+      "ja": "コンポーネント"
+    },
+    "theme.tab.canvas": {
+      "en": "Canvas",
+      "uk": "Canvas",
+      "pl": "Canvas",
+      "nl": "Canvas",
+      "ja": "キャンバス"
+    },
+    "theme.control.bg": {
+      "en": "Background",
+      "uk": "Фон",
+      "pl": "Tło",
+      "nl": "Achtergrond",
+      "ja": "背景"
+    },
+    "theme.control.bgSoft": {
+      "en": "Background Soft",
+      "uk": "М'який фон",
+      "pl": "Miękkie tło",
+      "nl": "Zachte achtergrond",
+      "ja": "ソフト背景"
+    },
+    "theme.control.bgRadialStart": {
+      "en": "Radial Start",
+      "uk": "Початок радіального",
+      "pl": "Początek radialny",
+      "nl": "Radiaal begin",
+      "ja": "放射開始"
+    },
+    "theme.control.bgRadialEnd": {
+      "en": "Radial End",
+      "uk": "Кінець радіального",
+      "pl": "Koniec radialny",
+      "nl": "Radiaal einde",
+      "ja": "放射終了"
+    },
+    "theme.control.text": {
+      "en": "Text",
+      "uk": "Текст",
+      "pl": "Tekst",
+      "nl": "Tekst",
+      "ja": "テキスト"
+    },
+    "theme.control.textDim": {
+      "en": "Text Dim",
+      "uk": "Приглушений текст",
+      "pl": "Przygaszony tekst",
+      "nl": "Gedimde tekst",
+      "ja": "淡色テキスト"
+    },
+    "theme.control.accent": {
+      "en": "Accent",
+      "uk": "Акцент",
+      "pl": "Akcent",
+      "nl": "Accent",
+      "ja": "アクセント"
+    },
+    "theme.control.accentWarm": {
+      "en": "Accent Warm",
+      "uk": "Теплий акцент",
+      "pl": "Ciepły akcent",
+      "nl": "Warme accentkleur",
+      "ja": "ウォームアクセント"
+    },
+    "theme.control.danger": {
+      "en": "Danger",
+      "uk": "Небезпека",
+      "pl": "Ostrzeżenie",
+      "nl": "Waarschuwing",
+      "ja": "警告"
+    },
+    "theme.control.surface": {
+      "en": "Surface",
+      "uk": "Поверхня",
+      "pl": "Powierzchnia",
+      "nl": "Oppervlak",
+      "ja": "サーフェス"
+    },
+    "theme.control.surfaceStrong": {
+      "en": "Surface Strong",
+      "uk": "Щільна поверхня",
+      "pl": "Mocna powierzchnia",
+      "nl": "Sterk oppervlak",
+      "ja": "強サーフェス"
+    },
+    "theme.control.line": {
+      "en": "Line",
+      "uk": "Лінія",
+      "pl": "Linia",
+      "nl": "Lijn",
+      "ja": "ライン"
+    },
+    "theme.control.gridColor": {
+      "en": "Grid Color",
+      "uk": "Колір сітки",
+      "pl": "Kolor siatki",
+      "nl": "Rasterkleur",
+      "ja": "グリッドカラー"
+    },
+    "theme.control.gridOpacity": {
+      "en": "Grid Opacity",
+      "uk": "Прозорість сітки",
+      "pl": "Przezroczystość siatki",
+      "nl": "Rasterdekking",
+      "ja": "グリッド不透明度"
+    },
+    "theme.control.gridSize": {
+      "en": "Grid Size",
+      "uk": "Розмір сітки",
+      "pl": "Rozmiar siatki",
+      "nl": "Rastergrootte",
+      "ja": "グリッドサイズ"
+    },
+    "theme.control.sectionShadow": {
+      "en": "Section Shadow",
+      "uk": "Тінь секції",
+      "pl": "Cień sekcji",
+      "nl": "Sectieschaduw",
+      "ja": "セクション影"
+    },
+    "theme.control.headerBackground": {
+      "en": "Header Background",
+      "uk": "Фон хедера",
+      "pl": "Tło nagłówka",
+      "nl": "Headerachtergrond",
+      "ja": "ヘッダー背景"
+    },
+    "theme.control.navHover": {
+      "en": "Nav Hover",
+      "uk": "Навігація hover",
+      "pl": "Nawigacja hover",
+      "nl": "Navigatie hover",
+      "ja": "ナビホバー"
+    },
+    "theme.control.panelBorder": {
+      "en": "Panel Border",
+      "uk": "Рамка панелі",
+      "pl": "Obramowanie panelu",
+      "nl": "Paneelrand",
+      "ja": "パネル枠線"
+    },
+    "theme.control.panelBackground": {
+      "en": "Panel Background",
+      "uk": "Фон панелі",
+      "pl": "Tło panelu",
+      "nl": "Paneelachtergrond",
+      "ja": "パネル背景"
+    },
+    "theme.control.panelShadow": {
+      "en": "Panel Shadow",
+      "uk": "Тінь панелі",
+      "pl": "Cień panelu",
+      "nl": "Paneelschaduw",
+      "ja": "パネル影"
+    },
+    "theme.control.controlButtonBorder": {
+      "en": "Control Button Border",
+      "uk": "Рамка кнопки керування",
+      "pl": "Obramowanie przycisku",
+      "nl": "Bedieningsknop-rand",
+      "ja": "コントロールボタン枠線"
+    },
+    "theme.control.controlButtonBg": {
+      "en": "Control Button Bg",
+      "uk": "Фон кнопки керування",
+      "pl": "Tło przycisku",
+      "nl": "Bedieningsknop-achtergrond",
+      "ja": "コントロールボタン背景"
+    },
+    "theme.control.controlTabBorder": {
+      "en": "Control Tab Border",
+      "uk": "Рамка вкладки керування",
+      "pl": "Obramowanie zakładki",
+      "nl": "Bedieningstab-rand",
+      "ja": "コントロールタブ枠線"
+    },
+    "theme.control.controlTabBg": {
+      "en": "Control Tab Bg",
+      "uk": "Фон вкладки керування",
+      "pl": "Tło zakładki",
+      "nl": "Bedieningstab-achtergrond",
+      "ja": "コントロールタブ背景"
+    },
+    "theme.control.themeTabActiveBg": {
+      "en": "Theme Tab Active Bg",
+      "uk": "Фон активної вкладки теми",
+      "pl": "Tło aktywnej zakładki motywu",
+      "nl": "Achtergrond actieve thematab",
+      "ja": "テーマタブアクティブ背景"
+    },
+    "theme.control.themeTabActiveBorder": {
+      "en": "Theme Tab Active Border",
+      "uk": "Рамка активної вкладки теми",
+      "pl": "Obramowanie aktywnej zakładki motywu",
+      "nl": "Rand actieve thematab",
+      "ja": "テーマタブアクティブ枠線"
+    },
+    "theme.control.bgTestTabActiveBg": {
+      "en": "BgTest Tab Active Bg",
+      "uk": "Фон активної вкладки BgTest",
+      "pl": "Tło aktywnej zakładki BgTest",
+      "nl": "BgTest actieve tab-achtergrond",
+      "ja": "BgTestタブアクティブ背景"
+    },
+    "theme.control.bgTestTabActiveBorder": {
+      "en": "BgTest Tab Active Border",
+      "uk": "Рамка активної вкладки BgTest",
+      "pl": "Obramowanie aktywnej zakładki BgTest",
+      "nl": "BgTest actieve tab-rand",
+      "ja": "BgTestタブアクティブ枠線"
+    },
+    "theme.control.controlInputBorder": {
+      "en": "Control Input Border",
+      "uk": "Рамка поля керування",
+      "pl": "Obramowanie pola",
+      "nl": "Invoerrand bediening",
+      "ja": "入力枠線"
+    },
+    "theme.control.controlInputBg": {
+      "en": "Control Input Bg",
+      "uk": "Фон поля керування",
+      "pl": "Tło pola",
+      "nl": "Invoerachtergrond bediening",
+      "ja": "入力背景"
+    },
+    "theme.control.sectionGradientStart": {
+      "en": "Section Gradient Start",
+      "uk": "Початок градієнта секції",
+      "pl": "Początek gradientu sekcji",
+      "nl": "Start sectiegradiënt",
+      "ja": "セクショングラデーション開始"
+    },
+    "theme.control.sectionGradientMid": {
+      "en": "Section Gradient Mid",
+      "uk": "Середина градієнта секції",
+      "pl": "Środek gradientu sekcji",
+      "nl": "Midden sectiegradiënt",
+      "ja": "セクショングラデーション中間"
+    },
+    "theme.control.sectionGradientEnd": {
+      "en": "Section Gradient End",
+      "uk": "Кінець градієнта секції",
+      "pl": "Koniec gradientu sekcji",
+      "nl": "Einde sectiegradiënt",
+      "ja": "セクショングラデーション終了"
+    },
+    "theme.control.primaryMid": {
+      "en": "Primary Mid",
+      "uk": "Primary Mid",
+      "pl": "Primary Mid",
+      "nl": "Primary Mid",
+      "ja": "Primary Mid"
+    },
+    "theme.control.primaryEnd": {
+      "en": "Primary End",
+      "uk": "Primary End",
+      "pl": "Primary End",
+      "nl": "Primary End",
+      "ja": "Primary End"
+    },
+    "theme.control.primaryText": {
+      "en": "Primary Text",
+      "uk": "Primary Text",
+      "pl": "Primary Text",
+      "nl": "Primary Text",
+      "ja": "Primary Text"
+    },
+    "theme.control.primaryShadow": {
+      "en": "Primary Shadow",
+      "uk": "Тінь primary",
+      "pl": "Cień primary",
+      "nl": "Primary-schaduw",
+      "ja": "Primaryシャドウ"
+    },
+    "theme.control.ghostBorder": {
+      "en": "Ghost Border",
+      "uk": "Рамка ghost",
+      "pl": "Obramowanie ghost",
+      "nl": "Ghost-rand",
+      "ja": "Ghost枠線"
+    },
+    "theme.control.ghostBackground": {
+      "en": "Ghost Background",
+      "uk": "Фон ghost",
+      "pl": "Tło ghost",
+      "nl": "Ghost-achtergrond",
+      "ja": "Ghost背景"
+    },
+    "theme.control.cardActiveBorder": {
+      "en": "Card Active Border",
+      "uk": "Рамка активної картки",
+      "pl": "Obramowanie aktywnej karty",
+      "nl": "Rand actieve kaart",
+      "ja": "アクティブカード枠線"
+    },
+    "theme.control.mapShellBg": {
+      "en": "Map Shell Bg",
+      "uk": "Фон оболонки мапи",
+      "pl": "Tło kontenera mapy",
+      "nl": "Kaartschil-achtergrond",
+      "ja": "マップシェル背景"
+    },
+    "theme.control.mapBackgroundFill": {
+      "en": "Map Background Fill",
+      "uk": "Заливка фону мапи",
+      "pl": "Wypełnienie tła mapy",
+      "nl": "Kaartachtergrond-vulling",
+      "ja": "マップ背景塗り"
+    },
+    "theme.control.mapRegionFill": {
+      "en": "Map Region Fill",
+      "uk": "Заливка регіону мапи",
+      "pl": "Wypełnienie regionu mapy",
+      "nl": "Kaartregio-vulling",
+      "ja": "マップ地域塗り"
+    },
+    "theme.control.mapRegionStroke": {
+      "en": "Map Region Stroke",
+      "uk": "Контур регіону мапи",
+      "pl": "Obrys regionu mapy",
+      "nl": "Kaartregio-lijn",
+      "ja": "マップ地域線"
+    },
+    "theme.control.mapNodePulseFill": {
+      "en": "Map Node Pulse Fill",
+      "uk": "Заливка пульсу вузла",
+      "pl": "Wypełnienie pulsu węzła",
+      "nl": "Kaartnode-pulsvulling",
+      "ja": "マップノードパルス塗り"
+    },
+    "theme.control.mapNodePulseStroke": {
+      "en": "Map Node Pulse Stroke",
+      "uk": "Контур пульсу вузла",
+      "pl": "Obrys pulsu węzła",
+      "nl": "Kaartnode-pulslijn",
+      "ja": "マップノードパルス線"
+    },
+    "theme.control.routeGradientStart": {
+      "en": "Route Gradient Start",
+      "uk": "Початок градієнта маршруту",
+      "pl": "Początek gradientu trasy",
+      "nl": "Start routegradiënt",
+      "ja": "ルートグラデーション開始"
+    },
+    "theme.control.routeGradientEnd": {
+      "en": "Route Gradient End",
+      "uk": "Кінець градієнта маршруту",
+      "pl": "Koniec gradientu trasy",
+      "nl": "Einde routegradiënt",
+      "ja": "ルートグラデーション終了"
+    },
+    "theme.control.boundPoint": {
+      "en": "Bound Point",
+      "uk": "Закріплена точка",
+      "pl": "Punkt powiązany",
+      "nl": "Gebonden punt",
+      "ja": "固定点"
+    },
+    "theme.control.freePoint": {
+      "en": "Free Point",
+      "uk": "Вільна точка",
+      "pl": "Punkt swobodny",
+      "nl": "Vrij punt",
+      "ja": "自由点"
+    },
+    "theme.control.topologyLink": {
+      "en": "Topology Link",
+      "uk": "Топологічний зв'язок",
+      "pl": "Połączenie topologii",
+      "nl": "Topologielink",
+      "ja": "トポロジーリンク"
+    },
+    "theme.control.freeLink": {
+      "en": "Free Link",
+      "uk": "Вільний зв'язок",
+      "pl": "Wolne połączenie",
+      "nl": "Vrije link",
+      "ja": "自由リンク"
+    },
+    "theme.control.crossLink": {
+      "en": "Cross Link",
+      "uk": "Перехресний зв'язок",
+      "pl": "Połączenie krzyżowe",
+      "nl": "Kruislink",
+      "ja": "クロスリンク"
+    },
+    "theme.control.gradientStart": {
+      "en": "Gradient Start",
+      "uk": "Початок градієнта",
+      "pl": "Początek gradientu",
+      "nl": "Gradient begin",
+      "ja": "グラデーション開始"
+    },
+    "theme.control.gradientEnd": {
+      "en": "Gradient End",
+      "uk": "Кінець градієнта",
+      "pl": "Koniec gradientu",
+      "nl": "Gradient einde",
+      "ja": "グラデーション終了"
+    }
+  }
+}

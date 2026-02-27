@@ -591,6 +591,12 @@ body.is-theme-editor {
   will-change: opacity, transform, border-color, background-color;
 }
 
+.header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
 .brand {
   text-decoration: none;
   color: inherit;
@@ -639,6 +645,39 @@ body.is-theme-editor {
   color: var(--text);
   background: var(--nav-hover-bg);
   outline: none;
+}
+
+.lang-switcher {
+  display: inline-flex;
+  align-items: center;
+}
+
+.lang-switcher select {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 0.3rem 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.lang-switcher select:focus-visible {
+  outline: 2px solid var(--accent-warm);
+  outline-offset: 1px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 main {
@@ -1014,6 +1053,10 @@ h3 {
 }
 
 @media (max-width: 760px) {
+  .header-controls {
+    margin-left: auto;
+  }
+
   .main-nav {
     display: none;
   }

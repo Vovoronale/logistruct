@@ -18,6 +18,8 @@ test("demo site files exist", () => {
   read("assets/background-templates.js");
   read("assets/vector-template-loader.js");
   read("assets/config/site-settings.json");
+  read("assets/config/i18n-settings.json");
+  read("assets/i18n/dictionary.json");
   read("assets/themes/default.json");
   read("assets/themes/dark.json");
   read("assets/themes/light.json");
@@ -650,8 +652,16 @@ test("runtime script persists bgTest settings and avoids URL-sync", () => {
     !js.includes("sessionStorage"),
     "bgTest controls should not use sessionStorage"
   );
+  const bgTestBlockMatch = js.match(
+    /function setupBackgroundTestControls[\s\S]*?function setupThemeEditorControls/
+  );
   assert.ok(
-    !js.includes("history.replaceState") && !js.includes("history.pushState"),
+    bgTestBlockMatch && bgTestBlockMatch[0],
+    "Unable to locate setupBackgroundTestControls block"
+  );
+  assert.ok(
+    !bgTestBlockMatch[0].includes("history.replaceState") &&
+      !bgTestBlockMatch[0].includes("history.pushState"),
     "bgTest controls must not sync tuning values into URL history"
   );
 });

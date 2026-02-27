@@ -3,9 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Logistruct | Project Engineering Organization</title>
+    <title data-i18n="site.title">Logistruct | Project Engineering Organization</title>
     <meta
       name="description"
+      data-i18n-content="site.description"
       content="Logistruct designs and delivers complex logistics projects with engineering precision, visual clarity, and measurable outcomes."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -25,90 +26,105 @@
         <span class="brand-mark">L/S</span>
         <span class="brand-text">Logistruct</span>
       </a>
-      <nav class="main-nav" aria-label="Main Navigation">
-        <a href="#projects">Projects</a>
-        <a href="#map">Map</a>
-        <a href="#team">Team</a>
-        <a href="#approach">Approach</a>
-        <a href="#contact">Contact</a>
-      </nav>
+      <div class="header-controls">
+        <nav class="main-nav" aria-label="Main Navigation" data-i18n-aria-label="nav.aria.main">
+          <a href="#projects" data-i18n="nav.projects">Projects</a>
+          <a href="#map" data-i18n="nav.map">Map</a>
+          <a href="#team" data-i18n="nav.team">Team</a>
+          <a href="#approach" data-i18n="nav.approach">Approach</a>
+          <a href="#contact" data-i18n="nav.contact">Contact</a>
+        </nav>
+        <div class="lang-switcher">
+          <label class="sr-only" for="lang-switcher" data-i18n="lang.label">Language</label>
+          <select
+            id="lang-switcher"
+            name="lang"
+            aria-label="Select language"
+            data-i18n-aria-label="lang.select_aria"
+          >
+            <option value="en">English</option>
+            <option value="uk">Українська</option>
+            <option value="pl">Polski</option>
+            <option value="nl">Nederlands</option>
+            <option value="ja">日本語</option>
+          </select>
+        </div>
+      </div>
     </header>
 
     <main>
       <section id="hero" class="section hero-section">
         <div class="hero-copy">
-          <p class="eyebrow">Project Engineering Organization</p>
-          <h1>
-            We shape
-            <span class="highlight">logistics systems</span>
-            that perform under pressure.
+          <p class="eyebrow" data-i18n="hero.eyebrow">Project Engineering Organization</p>
+          <h1 data-i18n-html="hero.heading_html">
+            We shape <span class="highlight">logistics systems</span> that perform under pressure.
           </h1>
-          <p class="lede">
+          <p class="lede" data-i18n="hero.lede">
             Premium planning, real-world execution, and data-driven decisions
             for complex industrial and infrastructure projects.
           </p>
           <div class="hero-actions">
-            <a class="btn btn-primary" href="#projects">View Projects</a>
-            <a class="btn btn-ghost" href="#contact">Start a Conversation</a>
+            <a class="btn btn-primary" href="#projects" data-i18n="hero.cta.projects">View Projects</a>
+            <a class="btn btn-ghost" href="#contact" data-i18n="hero.cta.contact">Start a Conversation</a>
           </div>
         </div>
 
-        <div class="hero-metrics" aria-label="Performance Snapshot">
+        <div class="hero-metrics" aria-label="Performance Snapshot" data-i18n-aria-label="hero.metrics.aria">
           <article>
             <p class="metric-value" data-count="32">32</p>
-            <p class="metric-label">Delivered Programs</p>
+            <p class="metric-label" data-i18n="hero.metrics.delivered">Delivered Programs</p>
           </article>
           <article>
             <p class="metric-value" data-count="14">14</p>
-            <p class="metric-label">Regions Coordinated</p>
+            <p class="metric-label" data-i18n="hero.metrics.regions">Regions Coordinated</p>
           </article>
           <article>
             <p class="metric-value" data-count="96">96</p>
-            <p class="metric-label">On-time Milestones %</p>
+            <p class="metric-label" data-i18n="hero.metrics.ontime">On-time Milestones %</p>
           </article>
         </div>
       </section>
 
       <section id="projects" class="section">
         <div class="section-head">
-          <p class="eyebrow">Selected Work</p>
-          <h2>Projects</h2>
+          <p class="eyebrow" data-i18n="projects.eyebrow">Selected Work</p>
+          <h2 data-i18n="projects.title">Projects</h2>
         </div>
         <div class="project-grid">
           <article class="project-card is-active" data-project="steel-hub" tabindex="0">
-            <p class="project-tag">Industrial</p>
-            <h3>Dnipro Steel Hub Rebuild</h3>
-            <p>
+            <p class="project-tag" data-i18n="projects.cards.steel.tag">Industrial</p>
+            <h3 data-i18n="projects.cards.steel.title">Dnipro Steel Hub Rebuild</h3>
+            <p data-i18n="projects.cards.steel.summary">
               Reconfigured inbound and outbound flows with staged construction
               phasing and zero downtime transfer windows.
             </p>
-            <p class="project-meta">Dnipro Region • Completed</p>
+            <p class="project-meta" data-i18n="projects.cards.steel.meta">Dnipro Region • Completed</p>
           </article>
           <article class="project-card" data-project="river-terminal" tabindex="0">
-            <p class="project-tag">Infrastructure</p>
-            <h3>South River Terminal Upgrade</h3>
-            <p>
+            <p class="project-tag" data-i18n="projects.cards.river.tag">Infrastructure</p>
+            <h3 data-i18n="projects.cards.river.title">South River Terminal Upgrade</h3>
+            <p data-i18n="projects.cards.river.summary">
               Introduced dynamic berth scheduling and resilient warehouse
               geometry for seasonal volume surges.
             </p>
-            <p class="project-meta">Odesa Region • Active</p>
+            <p class="project-meta" data-i18n="projects.cards.river.meta">Odesa Region • Active</p>
           </article>
           <article class="project-card" data-project="grain-corridor" tabindex="0">
-            <p class="project-tag">Supply Chain</p>
-            <h3>Eastern Grain Corridor</h3>
-            <p>
+            <p class="project-tag" data-i18n="projects.cards.grain.tag">Supply Chain</p>
+            <h3 data-i18n="projects.cards.grain.title">Eastern Grain Corridor</h3>
+            <p data-i18n="projects.cards.grain.summary">
               Built a multi-node handoff model linking rail, storage, and road
               dispatch with improved buffer stability.
             </p>
-            <p class="project-meta">Kharkiv Region • Active</p>
+            <p class="project-meta" data-i18n="projects.cards.grain.meta">Kharkiv Region • Active</p>
           </article>
         </div>
       </section>
 
       <section id="map" class="section">
         <div class="section-head">
-          <p class="eyebrow">Geography Narrative</p>
-          <h2>Story Map</h2>
+          <p class="eyebrow" data-i18n="map.eyebrow">Geography Narrative</p>
+          <h2 data-i18n="map.title">Story Map</h2>
         </div>
         <div class="map-shell">
           <svg
@@ -116,6 +132,7 @@
             viewBox="0 0 860 420"
             role="img"
             aria-label="Project map showing active delivery corridors"
+            data-i18n-aria-label="map.aria"
           >
             <defs>
               <linearGradient id="route-gradient" x1="0" x2="1" y1="0" y2="1">
@@ -150,17 +167,17 @@
               <g class="node is-active" data-project="steel-hub" transform="translate(245 240)">
                 <circle class="pulse" r="18"></circle>
                 <circle class="core" r="6"></circle>
-                <text x="18" y="-12">Dnipro Steel Hub</text>
+                <text x="18" y="-12" data-i18n="map.nodes.steel">Dnipro Steel Hub</text>
               </g>
               <g class="node" data-project="river-terminal" transform="translate(530 250)">
                 <circle class="pulse" r="18"></circle>
                 <circle class="core" r="6"></circle>
-                <text x="18" y="-12">South River Terminal</text>
+                <text x="18" y="-12" data-i18n="map.nodes.river">South River Terminal</text>
               </g>
               <g class="node" data-project="grain-corridor" transform="translate(705 166)">
                 <circle class="pulse" r="18"></circle>
                 <circle class="core" r="6"></circle>
-                <text x="18" y="-12">Eastern Grain Corridor</text>
+                <text x="18" y="-12" data-i18n="map.nodes.grain">Eastern Grain Corridor</text>
               </g>
             </g>
           </svg>
@@ -169,54 +186,54 @@
 
       <section id="team" class="section">
         <div class="section-head">
-          <p class="eyebrow">People</p>
-          <h2>Team</h2>
+          <p class="eyebrow" data-i18n="team.eyebrow">People</p>
+          <h2 data-i18n="team.title">Team</h2>
         </div>
         <div class="team-grid">
           <article>
             <h3>Olha Koval</h3>
-            <p class="role">Lead Systems Architect</p>
-            <p>Designs resilient logistics topology for phased infrastructure delivery.</p>
+            <p class="role" data-i18n="team.members.olha.role">Lead Systems Architect</p>
+            <p data-i18n="team.members.olha.bio">Designs resilient logistics topology for phased infrastructure delivery.</p>
           </article>
           <article>
             <h3>Dmytro Honchar</h3>
-            <p class="role">Construction Program Lead</p>
-            <p>Coordinates multi-contractor execution with high-risk dependency control.</p>
+            <p class="role" data-i18n="team.members.dmytro.role">Construction Program Lead</p>
+            <p data-i18n="team.members.dmytro.bio">Coordinates multi-contractor execution with high-risk dependency control.</p>
           </article>
           <article>
             <h3>Iryna Melnyk</h3>
-            <p class="role">Data and Operations Analyst</p>
-            <p>Builds planning models that connect forecast variance to field decisions.</p>
+            <p class="role" data-i18n="team.members.iryna.role">Data and Operations Analyst</p>
+            <p data-i18n="team.members.iryna.bio">Builds planning models that connect forecast variance to field decisions.</p>
           </article>
         </div>
       </section>
 
       <section id="approach" class="section">
         <div class="section-head">
-          <p class="eyebrow">Method</p>
-          <h2>Approach</h2>
+          <p class="eyebrow" data-i18n="approach.eyebrow">Method</p>
+          <h2 data-i18n="approach.title">Approach</h2>
         </div>
         <ol class="approach-list">
           <li>
-            <h3>Context Mapping</h3>
-            <p>We model constraints, bottlenecks, and operational priorities before design starts.</p>
+            <h3 data-i18n="approach.items.context.title">Context Mapping</h3>
+            <p data-i18n="approach.items.context.body">We model constraints, bottlenecks, and operational priorities before design starts.</p>
           </li>
           <li>
-            <h3>Parametric Design</h3>
-            <p>Layouts and capacities are tuned through variable-driven iterations and stress tests.</p>
+            <h3 data-i18n="approach.items.parametric.title">Parametric Design</h3>
+            <p data-i18n="approach.items.parametric.body">Layouts and capacities are tuned through variable-driven iterations and stress tests.</p>
           </li>
           <li>
-            <h3>Execution Control</h3>
-            <p>Field sequencing and supplier windows are synchronized with measurable checkpoints.</p>
+            <h3 data-i18n="approach.items.execution.title">Execution Control</h3>
+            <p data-i18n="approach.items.execution.body">Field sequencing and supplier windows are synchronized with measurable checkpoints.</p>
           </li>
         </ol>
       </section>
 
       <section id="contact" class="section contact-section">
         <div>
-          <p class="eyebrow">Contact</p>
-          <h2>Let’s scope your next program.</h2>
-          <p>
+          <p class="eyebrow" data-i18n="contact.eyebrow">Contact</p>
+          <h2 data-i18n="contact.title">Let’s scope your next program.</h2>
+          <p data-i18n="contact.body">
             Send your project context and current constraints. We will return a
             focused response with milestones, risks, and decision options.
           </p>
@@ -228,7 +245,7 @@
     </main>
 
     <footer class="site-footer">
-      <p>Logistruct • Engineering precision for logistics systems.</p>
+      <p data-i18n="footer.tagline">Logistruct • Engineering precision for logistics systems.</p>
       <p>&copy; <span id="year"></span> Logistruct.</p>
     </footer>
 

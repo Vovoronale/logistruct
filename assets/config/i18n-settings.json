@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "supportedLocales": ["en", "uk", "pl", "nl", "ja"],
+  "defaultLocale": "en",
+  "siteUrl": "https://logistruct.com/",
+  "storageKey": "logistruct:locale:v1"
+}
