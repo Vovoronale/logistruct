@@ -111,6 +111,58 @@ test("light and dark theme files are present and valid", () => {
   });
 });
 
+test("default and light themes share the accidental light baseline while dark remains distinct", () => {
+  const defaultTheme = JSON.parse(read("assets/themes/default.json"));
+  const lightTheme = JSON.parse(read("assets/themes/light.json"));
+  const darkTheme = JSON.parse(read("assets/themes/dark.json"));
+
+  assert.deepEqual(
+    defaultTheme.tokens,
+    lightTheme.tokens,
+    "default and light themes should be exact aliases of the accidental light baseline"
+  );
+  assert.notDeepEqual(
+    defaultTheme.tokens,
+    darkTheme.tokens,
+    "dark theme should remain a distinct alternative"
+  );
+  assert.equal(
+    defaultTheme.tokens["--bg"],
+    "#efeee6",
+    "accidental light baseline should use the approved warm-light page background"
+  );
+  assert.equal(
+    defaultTheme.tokens["--text"],
+    "#25282b",
+    "accidental light baseline should use graphite body text"
+  );
+  assert.equal(
+    defaultTheme.tokens["--surface"],
+    "rgba(255, 255, 255, 0.04)",
+    "accidental light baseline should keep surfaces nearly transparent"
+  );
+  assert.equal(
+    defaultTheme.tokens["--header-bg"],
+    "rgba(255, 255, 255, 0.18)",
+    "menu shell should use the more transparent frosted header tint"
+  );
+  assert.equal(
+    defaultTheme.tokens["--btn-primary-mid"],
+    "rgba(255, 255, 255, 0.56)",
+    "primary CTA should use the neutral light top tone"
+  );
+  assert.equal(
+    defaultTheme.tokens["--btn-primary-end"],
+    "rgba(255, 255, 255, 0.36)",
+    "primary CTA should use the neutral light bottom tone"
+  );
+  assert.equal(
+    defaultTheme.tokens["--btn-ghost-bg"],
+    "rgba(255, 255, 255, 0.14)",
+    "ghost CTA should use the approved translucent light fill"
+  );
+});
+
 test("index.html has required premium showcase sections", () => {
   const html = read("index.html");
   const requiredSections = [
@@ -143,6 +195,10 @@ test("index.html includes single-source intro contract and initial intro phase",
     "Body should declare initial intro phase"
   );
   assert.ok(
+    html.includes('class="site-header-shell"'),
+    "Header should include a dedicated shell layer for real backdrop blur"
+  );
+  assert.ok(
     html.includes('class="brand-text"'),
     "Primary brand text element is required for single-source intro"
   );
@@ -167,6 +223,263 @@ test("index links static assets", () => {
   assert.ok(
     html.includes('src="assets/app.js"') && html.includes('type="module"'),
     "app.js script include is missing"
+  );
+});
+
+test("uk hero eyebrow uses dedicated cyrillic mono font override", () => {
+  const html = read("index.html");
+  const css = read("assets/styles.css");
+
+  assert.ok(
+    html.includes("IBM+Plex+Mono"),
+    "Google Fonts import must include IBM Plex Mono"
+  );
+  assert.ok(
+    css.includes('html:lang(uk) .hero-section .eyebrow'),
+    "CSS must include a uk-specific hero eyebrow override"
+  );
+  assert.ok(
+    css.includes('font-family: "IBM Plex Mono", "Space Mono", "Courier New", monospace;'),
+    "uk hero eyebrow override must use IBM Plex Mono first"
+  );
+  assert.ok(
+    css.includes("font-weight: 500;"),
+    "uk hero eyebrow override must set font-weight to 500"
+  );
+  assert.ok(
+    css.includes("letter-spacing: 0.04em;"),
+    "uk hero eyebrow override must reduce letter-spacing to 0.04em"
+  );
+  assert.match(
+    css,
+    /\.eyebrow\s*\{[\s\S]*letter-spacing:\s*0\.11em;/,
+    "base eyebrow rule must preserve 0.11em letter-spacing"
+  );
+});
+
+test("body uses Segoe UI first and accidental light layout restores full-width framing", () => {
+  const css = read("assets/styles.css");
+
+  assert.match(
+    css,
+    /body\s*\{[\s\S]*font-family:\s*"Segoe UI",\s*"Sora",\s*"Trebuchet MS",\s*sans-serif;/,
+    "Body font stack must put Segoe UI first"
+  );
+  assert.match(
+    css,
+    /\.site-header\s*\{[\s\S]*width:\s*calc\(100%\s*-\s*2\.4rem\);/,
+    "Desktop header should use full-width framing with fixed gutters"
+  );
+  assert.match(
+    css,
+    /\.site-header\s*\{[\s\S]*isolation:\s*isolate;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*999px;[\s\S]*overflow:\s*visible;[\s\S]*background:\s*transparent;/,
+    "Desktop header should stay unclipped by default so the intro brand can travel into place"
+  );
+  assert.match(
+    css,
+    /\.site-header-shell\s*\{[\s\S]*position:\s*absolute;[\s\S]*border:\s*1px solid var\(--line\);[\s\S]*background:\s*var\(--header-bg\);/,
+    "Animated frosted shell should stay on the dedicated site-header-shell element"
+  );
+  assert.doesNotMatch(
+    css,
+    /\.site-header-shell\s*\{[^}]*backdrop-filter:/,
+    "site-header-shell should no longer own the real backdrop blur"
+  );
+  assert.doesNotMatch(
+    css,
+    /\.site-header-shell\s*\{[^}]*-webkit-backdrop-filter:/,
+    "site-header-shell should no longer own the webkit backdrop blur"
+  );
+  assert.match(
+    css,
+    /main\s*\{[\s\S]*width:\s*calc\(100%\s*-\s*2\.4rem\);/,
+    "Main content should use full-width framing with fixed gutters"
+  );
+  assert.match(
+    css,
+    /\.site-footer\s*\{[\s\S]*width:\s*calc\(100%\s*-\s*2\.4rem\);/,
+    "Footer should use full-width framing with fixed gutters"
+  );
+  assert.match(
+    css,
+    /\.hero-section\s*\{[\s\S]*grid-template-columns:\s*1\.25fr\s+0\.75fr;/,
+    "Hero grid should restore accidental full-width proportions"
+  );
+  assert.match(
+    css,
+    /\.hero-section h1\s*\{[\s\S]*max-width:\s*15ch;/,
+    "Hero heading should keep a soft guardrail for Segoe UI without the compact dark-card cap"
+  );
+  assert.equal(
+    css.includes('max-width: 48rem;'),
+    false,
+    "Hero copy should not keep the compact 48rem cap"
+  );
+  assert.equal(
+    css.includes('max-width: 12.4em;'),
+    false,
+    "Hero heading should not keep the compact 12.4em cap"
+  );
+  assert.equal(
+    css.includes('max-width: 38rem;'),
+    false,
+    "Hero lede should not keep the compact 38rem cap"
+  );
+  assert.equal(
+    css.includes('width: min(100%, 24rem);'),
+    false,
+    "Hero metrics should not keep the compact fixed rail width"
+  );
+  assert.equal(
+    css.includes('justify-self: end;'),
+    false,
+    "Hero metrics should follow the accidental grid instead of a fixed end-aligned rail"
+  );
+  assert.equal(
+    css.includes('width: min(var(--max-width), calc(100% - 2.4rem));'),
+    false,
+    "Desktop framing should no longer depend on var(--max-width)"
+  );
+  assert.match(
+    css,
+    /@media \(max-width: 1020px\)\s*\{[\s\S]*\.hero-section\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
+    "Tablet and down layouts must keep the single-column hero fallback"
+  );
+});
+
+test("accidental light styling uses flat sections, transparent cards, and a frosted intro shell", () => {
+  const css = read("assets/styles.css");
+
+  assert.match(
+    css,
+    /\.section\s*\{[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;[\s\S]*background:\s*none;[\s\S]*box-shadow:\s*none;/,
+    "Sections should be flat and surface-free in the accidental light baseline"
+  );
+  assert.match(
+    css,
+    /\.hero-metrics article\s*\{[\s\S]*background:\s*none;[\s\S]*border:\s*0;[\s\S]*border-radius:\s*0;/,
+    "Hero metrics should float without dark cards"
+  );
+  assert.match(
+    css,
+    /\.project-card\s*\{[\s\S]*background:\s*none;[\s\S]*border:\s*0;/,
+    "Project cards should render as flat editorial columns"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="idle"\] \.site-header-shell,[\s\S]*body\[data-intro-phase="reduced"\] \.site-header-shell\s*\{[\s\S]*opacity:\s*0;[\s\S]*width:\s*var\(--menu-shell-collapsed-width\);/,
+    "Intro shell should stay hidden before nav begins"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="nav"\] \.site-header-shell,[\s\S]*body\[data-intro-phase="skip"\] \.site-header-shell\s*\{[\s\S]*opacity:\s*1;[\s\S]*width:\s*100%;/,
+    "Intro shell should become visible from nav onward"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="idle"\] \.site-header,[\s\S]*body\[data-intro-phase="move"\] \.site-header\s*\{[\s\S]*backdrop-filter:\s*none;[\s\S]*-webkit-backdrop-filter:\s*none;/,
+    "Pre-nav intro phases should explicitly keep host blur disabled"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="idle"\] \.site-header,[\s\S]*body\[data-intro-phase="move"\] \.site-header\s*\{[\s\S]*overflow:\s*visible;/,
+    "Pre-nav intro phases should keep header overflow visible so the moving brand text is not clipped"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="reduced"\] \.site-header\s*\{[\s\S]*backdrop-filter:\s*none;[\s\S]*-webkit-backdrop-filter:\s*none;/,
+    "Reduced intro phase should keep host blur disabled"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="nav"\] \.site-header,[\s\S]*body\[data-intro-phase="skip"\] \.site-header\s*\{[\s\S]*overflow:\s*hidden;[\s\S]*backdrop-filter:\s*blur\(24px\);[\s\S]*-webkit-backdrop-filter:\s*blur\(24px\);/,
+    "Visible intro phases should clip the live blur only after the header shell appears"
+  );
+  assert.ok(
+    css.includes("--menu-shell-collapsed-width"),
+    "Menu shell collapsed width token should exist"
+  );
+  assert.ok(
+    css.includes("--menu-shell-reveal-ms: 180ms;"),
+    "Desktop menu shell reveal duration token should exist"
+  );
+  assert.ok(
+    css.includes("--menu-nav-delay-ms: 120ms;"),
+    "Desktop menu nav delay token should exist"
+  );
+  assert.ok(
+    css.includes("--menu-lang-delay-ms: 260ms;"),
+    "Desktop menu language delay token should exist"
+  );
+  assert.match(
+    css,
+    /body\.is-intro-mobile-nav-skip\s*\{[\s\S]*--menu-shell-reveal-ms:\s*120ms;[\s\S]*--menu-nav-delay-ms:\s*80ms;[\s\S]*--menu-lang-delay-ms:\s*150ms;/,
+    "Mobile intro skip mode should override shell and reveal timing variables"
+  );
+});
+
+test("menu intro staging keeps nav bold and language last", () => {
+  const css = read("assets/styles.css");
+
+  assert.match(
+    css,
+    /\.main-nav a\s*\{[\s\S]*font-weight:\s*700;/,
+    "Main navigation links should become bold"
+  );
+  assert.match(
+    css,
+    /\.lang-switcher select\s*\{[\s\S]*font-weight:\s*400;/,
+    "Language select should become regular weight"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="nav"\] \.main-nav,[\s\S]*body\[data-intro-phase="reveal"\] \.main-nav\s*\{[\s\S]*transition-delay:\s*var\(--menu-nav-delay-ms\);/,
+    "Main nav should keep its reveal but start after the shell"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="nav"\] \.lang-switcher,[\s\S]*body\[data-intro-phase="reveal"\] \.lang-switcher\s*\{[\s\S]*opacity:\s*1;[\s\S]*transition-delay:\s*var\(--menu-lang-delay-ms\);/,
+    "Language switcher should reveal after nav"
+  );
+  assert.match(
+    css,
+    /body\[data-intro-phase="idle"\] \.lang-switcher,[\s\S]*body\[data-intro-phase="reduced"\] \.lang-switcher\s*\{[\s\S]*opacity:\s*0;[\s\S]*transform:\s*translate3d\(0\.35rem,\s*0,\s*0\);[\s\S]*pointer-events:\s*none;/,
+    "Language switcher should stay hidden before the final intro step"
+  );
+  assert.match(
+    css,
+    /\.site-header-shell\s*\{[\s\S]*transition:\s*width var\(--menu-shell-reveal-ms\) cubic-bezier\(0\.22,\s*0\.61,\s*0\.36,\s*1\),\s*opacity 180ms ease;/,
+    "Menu shell should animate with width-first left-to-right expansion"
+  );
+});
+
+test("cta styling stays neutral and blur-free", () => {
+  const css = read("assets/styles.css");
+
+  assert.match(
+    css,
+    /\.btn-primary\s*\{[\s\S]*background:\s*linear-gradient\([\s\S]*var\(--btn-primary-mid\)\s*0%[\s\S]*var\(--btn-primary-end\)\s*100%[\s\S]*\);/,
+    "Primary CTA should use the neutral token-only gradient"
+  );
+  assert.doesNotMatch(
+    css,
+    /\.btn-primary\s*\{[^}]*var\(--accent\)/,
+    "Primary CTA should no longer start from the accent color"
+  );
+  assert.match(
+    css,
+    /\.btn-primary\s*\{[\s\S]*border-color:\s*var\(--btn-ghost-border\);/,
+    "Primary CTA should restore a visible neutral border"
+  );
+  assert.match(
+    css,
+    /\.btn-ghost\s*\{[\s\S]*background:\s*var\(--btn-ghost-bg\);/,
+    "Ghost CTA should keep the translucent neutral fill"
+  );
+  assert.doesNotMatch(
+    css,
+    /\.btn\s*\{[\s\S]*backdrop-filter:/,
+    "Buttons should not introduce blur"
   );
 });
 
@@ -432,7 +745,7 @@ test("architecture docs mention phase engine, vector ingest, and reduced policy"
 
 test("styles define design system primitives", () => {
   const css = read("assets/styles.css");
-  assert.ok(css.includes(":root"), "CSS variables are required");
+  assert.match(css, /(^|\n):root\s*\{/, "styles.css must start a valid :root token block");
   assert.ok(css.includes("--bg"), "Background color token is required");
   assert.ok(css.includes("@keyframes"), "Animation keyframes are required");
 });
@@ -531,12 +844,12 @@ test("runtime script skips non-background UI setup in bgTest mode", () => {
   );
 });
 
-test("styles restore legacy grid visibility and remove overlay mask", () => {
+test("styles keep the accidental-light grid visible and remove overlay mask", () => {
   const css = read("assets/styles.css");
   assert.match(
     css,
-    /--bg-grid-opacity:\s*0\.46\b/,
-    "Legacy grid opacity baseline (0.46) must be restored in CSS variables"
+    /--bg-grid-opacity:\s*0\.18\b/,
+    "Accidental-light grid opacity baseline (0.18) must be encoded in CSS variables"
   );
   assert.match(
     css,

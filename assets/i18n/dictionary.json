@@ -73,25 +73,25 @@
       "ja": "言語を選択"
     },
     "hero.eyebrow": {
-      "en": "Project Engineering Organization",
-      "uk": "Проєктно-інженерна організація",
-      "pl": "Organizacja inżynierii projektowej",
-      "nl": "Projectengineeringorganisatie",
-      "ja": "プロジェクトエンジニアリング組織"
+      "en": "ARCHITECTURAL DESIGN & ENGINEERING",
+      "uk": "Архітектурне проєктування та інжиніринг",
+      "pl": "Projektowanie architektoniczne i inżynieryjne",
+      "nl": "Architectonisch ontwerp en engineering",
+      "ja": "建築設計とエンジニアリング"
     },
     "hero.heading_html": {
-      "en": "We shape <span class=\"highlight\">logistics systems</span> that perform under pressure.",
-      "uk": "Ми формуємо <span class=\"highlight\">логістичні системи</span>, що працюють під навантаженням.",
-      "pl": "Projektujemy <span class=\"highlight\">systemy logistyczne</span>, które działają pod presją.",
-      "nl": "Wij ontwerpen <span class=\"highlight\">logistieke systemen</span> die onder druk presteren.",
-      "ja": "私たちは、<span class=\"highlight\">物流システム</span>を高負荷環境でも機能するよう設計します。"
+      "en": "Architecture. Structure. Technology.<br><span class=\"highlight\">Engineered as one.</span>",
+      "uk": "Архітектура. Конструкції. Технологія.<br><span class=\"highlight\">Спроєктовані як єдине ціле.</span>",
+      "pl": "Architektura. Konstrukcja. Technologia.<br><span class=\"highlight\">Zaprojektowane jako jedna całość.</span>",
+      "nl": "Architectuur. Constructie. Technologie.<br><span class=\"highlight\">Ontworpen als één geheel.</span>",
+      "ja": "建築。構造。技術。<br><span class=\"highlight\">一体として設計する。</span>"
     },
     "hero.lede": {
-      "en": "Premium planning, real-world execution, and data-driven decisions for complex industrial and infrastructure projects.",
-      "uk": "Преміальне планування, практична реалізація та рішення на основі даних для складних промислових та інфраструктурних проєктів.",
-      "pl": "Zaawansowane planowanie, realna realizacja i decyzje oparte na danych dla złożonych projektów przemysłowych i infrastrukturalnych.",
-      "nl": "Premium planning, uitvoering in de praktijk en datagedreven beslissingen voor complexe industriële en infrastructuurprojecten.",
-      "ja": "複雑な産業・インフラ案件に向けて、高品質な計画、現場実行、データ駆動の意思決定を提供します。"
+      "en": "We design complete building systems for the most demanding industrial, agricultural, and residential projects — where architecture shapes structure, structure enables technology, and every decision is built to perform on site. From concept to construction-ready documentation. One team. One system.",
+      "uk": "Ми проєктуємо цілісні системи будівель для найскладніших промислових, сільськогосподарських та житлових обʼєктів де архітектура формує конструкцію, конструкція забезпечує технологію, а кожне рішення працює на будмайданчику. Від концепції до робочої документації. Одна команда. Одна система.",
+      "pl": "Projektujemy kompletne systemy budynków dla najbardziej wymagających obiektów przemysłowych, rolniczych i mieszkaniowych — tam, gdzie architektura kształtuje konstrukcję, konstrukcja umożliwia technologię, a każda decyzja ma działać na placu budowy. Od koncepcji po dokumentację wykonawczą. Jeden zespół. Jeden system.",
+      "nl": "Wij ontwerpen complete bouwsystemen voor de meest veeleisende industriële, agrarische en woonprojecten — waar architectuur de constructie vormgeeft, de constructie de technologie mogelijk maakt en elke beslissing op de bouwplaats moet presteren. Van concept tot uitvoeringsklare documentatie. Eén team. Eén systeem.",
+      "ja": "私たちは、最も要求水準の高い産業、農業、住宅プロジェクトに向けて、統合された建築システムを設計します。建築が構造を形づくり、構造が技術を成立させ、あらゆる判断が現場で機能することを前提に組み立てます。構想から施工用ドキュメントまで。一つのチーム。一つのシステム。"
     },
     "hero.cta.projects": {
       "en": "View Projects",

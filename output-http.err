@@ -1,0 +1,20 @@
+127.0.0.1 - - [28/Feb/2026 00:33:05] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /?lang=en HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /assets/styles.css HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /assets/app.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /assets/background-templates.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /assets/vector-template-loader.js HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:22] "GET /assets/config/i18n-settings.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:23] "GET /assets/i18n/dictionary.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:23] "GET /assets/config/site-settings.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:23] code 404, message File not found
+127.0.0.1 - - [28/Feb/2026 00:33:23] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /?lang=en HTTP/1.1" 304 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /assets/styles.css HTTP/1.1" 304 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /assets/config/i18n-settings.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /assets/i18n/dictionary.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /assets/config/site-settings.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:30] "GET /?lang=uk HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:31] "GET /assets/config/i18n-settings.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:31] "GET /assets/i18n/dictionary.json HTTP/1.1" 200 -
+127.0.0.1 - - [28/Feb/2026 00:33:31] "GET /assets/config/site-settings.json HTTP/1.1" 200 -
