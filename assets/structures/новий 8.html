@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Rect Junction Param UI</title>
+  <style>
+    :root { --bg:#0b0f14; --panel:#111826; --panel2:#0f1623; --text:#e6eefc; --muted:#9bb0d0; --bad:#ff4d4d; --ok:#45d483; --base:#63a3ff; }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{margin:0;background:var(--bg);color:var(--text)}
+    .app{display:flex;height:100vh;gap:12px;padding:12px}
+    .left{width:420px;min-width:340px;display:flex;flex-direction:column;gap:12px}
+    .card{background:var(--panel);border:1px solid #1c2a44;border-radius:12px;padding:12px}
+    .row{display:flex;gap:8px;align-items:center}
+    .row > *{flex:1}
+    label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
+    input,select,textarea,button{
+      width:100%; padding:9px 10px; border-radius:10px; border:1px solid #26395c;
+      background:var(--panel2); color:var(--text);
+    }
+    textarea{min-height:64px;resize:vertical}
+    button{cursor:pointer;background:#182645}
+    button:hover{filter:brightness(1.1)}
+    .list{max-height:260px;overflow:auto;border-radius:10px;border:1px solid #26395c}
+    .item{padding:10px;border-bottom:1px solid #1f2f4f;cursor:pointer}
+    .item:last-child{border-bottom:none}
+    .item.active{background:#152441}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;margin-left:6px}
+    .b-ok{background:rgba(69,212,131,.15);border:1px solid rgba(69,212,131,.35);color:var(--ok)}
+    .b-bad{background:rgba(255,77,77,.12);border:1px solid rgba(255,77,77,.35);color:var(--bad)}
+    .right{flex:1;display:flex;flex-direction:column;gap:12px}
+    .svgWrap{flex:1;background:var(--panel);border:1px solid #1c2a44;border-radius:12px;overflow:hidden;position:relative}
+    #svg{width:100%;height:100%}
+    .viol{max-height:220px;overflow:auto}
+    .viol pre{white-space:pre-wrap;margin:0;color:var(--text)}
+    .hint{color:var(--muted);font-size:12px;line-height:1.35}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="left">
+    <div class="card">
+      <div class="row">
+        <button id="addBtn">+ Додати</button>
+        <button id="delBtn">Видалити</button>
+      </div>
+      <div class="hint" style="margin-top:10px">
+        Клік по прямокутнику в списку → редагування. Зміни застосовуються одразу.
+        Порушення підсвічуються червоним, повідомлення — внизу.
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600;margin-bottom:8px">Прямокутники</div>
+      <div id="list" class="list"></div>
+    </div>
+
+    <div class="card" id="editorCard">
+      <div style="font-weight:600;margin-bottom:8px">Параметри</div>
+      <div id="editor"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="svgWrap">
+      <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="hatchBad" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="8" height="8" fill="rgba(255,77,77,0.10)"></rect>
+            <line x1="0" y1="0" x2="0" y2="8" stroke="rgba(255,77,77,0.35)" stroke-width="2"/>
+          </pattern>
+          <pattern id="hatchBase" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="10" height="10" fill="rgba(99,163,255,0.10)"></rect>
+            <line x1="0" y1="0" x2="0" y2="10" stroke="rgba(99,163,255,0.35)" stroke-width="2"/>
+          </pattern>
+        </defs>
+      </svg>
+    </div>
+
+    <div class="card viol">
+      <div style="font-weight:600;margin-bottom:8px">Порушення</div>
+      <pre id="violText"></pre>
+    </div>
+  </div>
+</div>
+
+<script>
+  const EPS = 1e-6;
+
+  const Kind = { BASE:"base", ATTACHED:"attached", EMBEDDED:"embedded" };
+  const Dir  = { H:"H", V:"V" };
+  const Side = { LEFT:"left", RIGHT:"right", TOP:"top", BOTTOM:"bottom" };
+  const Mode = { TOUCH:"touch", INTERSECT:"intersect" };
+
+  // --- data ---
+  let nodes = [
+    {id:"B", kind:Kind.BASE, dir:Dir.V, layers:"0.12,0.08,0.10", L:3.0, parent:null},
+
+    {id:"F", kind:Kind.ATTACHED, dir:Dir.H, layers:"0.20,0.05", L:4.0, parent:"B",
+      side:Side.RIGHT, mode:Mode.INTERSECT, a:1.00, p:0.05},
+
+    {id:"W1", kind:Kind.EMBEDDED, dir:Dir.V, layers:"0.08,0.02", L:1.2, parent:"B", dx:0.05, dy:0.80},
+    {id:"W2", kind:Kind.EMBEDDED, dir:Dir.V, layers:"0.08,0.02", L:1.2, parent:"B", dx:0.05, dy:1.20}
+  ];
+
+  let selectedId = "B";
+
+  // --- helpers ---
+  const parseLayers = (s) => String(s).split(",").map(x=>parseFloat(x.trim())).filter(x=>Number.isFinite(x) && x>0);
+  const sum = (arr)=>arr.reduce((a,b)=>a+b,0);
+
+  function sizeOf(n){
+    const t = sum(parseLayers(n.layers));
+    if(n.dir===Dir.H) return {w: Number(n.L)||0, h: t};
+    return {w: t, h: Number(n.L)||0};
+  }
+
+  function overlap(a,b){
+    const dx = Math.min(a.x2,b.x2) - Math.max(a.x1,b.x1);
+    const dy = Math.min(a.y2,b.y2) - Math.max(a.y1,b.y1);
+    return {dx,dy};
+  }
+  function intersectsArea(a,b){
+    const {dx,dy}=overlap(a,b);
+    return dx>EPS && dy>EPS;
+  }
+  function touches(a,b){
+    const {dx,dy}=overlap(a,b);
+    const touchX = Math.abs(dx)<=EPS && dy>EPS;
+    const touchY = Math.abs(dy)<=EPS && dx>EPS;
+    return touchX || touchY;
+  }
+
+  function longSides(baseGeom){
+    return (baseGeom.w >= baseGeom.h) ? new Set([Side.TOP,Side.BOTTOM]) : new Set([Side.LEFT,Side.RIGHT]);
+  }
+
+  // --- build geometry ---
+  function buildGeoms(){
+    const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+    const geoms = {};
+    const base = nodes.find(n=>n.kind===Kind.BASE) || nodes[0];
+
+    // base at (0,0)
+    const bs = sizeOf(base);
+    geoms[base.id] = {x1:0,y1:0,x2:bs.w,y2:bs.h, w:bs.w, h:bs.h};
+
+    // topological-ish iteration
+    let unresolved = nodes.filter(n=>n.id!==base.id);
+    for(let iter=0; iter<200; iter++){
+      if(unresolved.length===0) break;
+      let progressed=false;
+      const next=[];
+      for(const n of unresolved){
+        if(!n.parent || !geoms[n.parent]) { next.push(n); continue; }
+        const P = geoms[n.parent];
+        const s = sizeOf(n);
+        if(s.w<=0 || s.h<=0){ next.push(n); continue; }
+
+        if(n.kind===Kind.EMBEDDED){
+          const x1 = P.x1 + (Number(n.dx)||0);
+          const y1 = P.y1 + (Number(n.dy)||0);
+          geoms[n.id] = {x1,y1,x2:x1+s.w,y2:y1+s.h,w:s.w,h:s.h};
+          progressed=true;
+          continue;
+        }
+
+        if(n.kind===Kind.ATTACHED){
+          // spec: attached to base; enforce by using parent as given
+          const B = P;
+          const a = Number(n.a)||0;
+          const mode = n.mode || Mode.TOUCH;
+          const p = (mode===Mode.INTERSECT) ? (Number(n.p)||0) : 0;
+
+          let x1,y1;
+          const side = n.side || Side.RIGHT;
+          if(side===Side.RIGHT){
+            x1 = B.x2 - p; y1 = B.y1 + a;
+          }else if(side===Side.LEFT){
+            x1 = (B.x1 + p) - s.w; y1 = B.y1 + a;
+          }else if(side===Side.TOP){
+            x1 = B.x1 + a; y1 = B.y2 - p;
+          }else{
+            x1 = B.x1 + a; y1 = (B.y1 + p) - s.h;
+          }
+          geoms[n.id] = {x1,y1,x2:x1+s.w,y2:y1+s.h,w:s.w,h:s.h};
+          progressed=true;
+          continue;
+        }
+
+        next.push(n);
+      }
+      unresolved=next;
+      if(!progressed) break;
+    }
+    return geoms;
+  }
+
+  // --- validation ---
+  function validate(geoms){
+    const byId = Object.fromEntries(nodes.map(n=>[n.id,n]));
+    const base = nodes.find(n=>n.kind===Kind.BASE);
+    const B = geoms[base.id];
+    const viol = Object.fromEntries(nodes.map(n=>[n.id,[]]));
+
+    // C0 connectivity to base
+    for(const n of nodes){
+      if(n.kind===Kind.BASE) continue;
+      let cur=n, seen=new Set(), ok=false;
+      while(cur.parent){
+        if(seen.has(cur.parent)) break;
+        seen.add(cur.parent);
+        if(cur.parent===base.id){ ok=true; break; }
+        cur = byId[cur.parent];
+        if(!cur) break;
+      }
+      if(!ok) viol[n.id].push("C0: немає ланцюжка до базового (parent-chain).");
+    }
+
+    // unresolved geom
+    for(const n of nodes){
+      if(!geoms[n.id]) viol[n.id].push("GEOM: не вдалося побудувати геометрію (parent відсутній або параметри 0).");
+    }
+
+    // attached rules
+    for(const n of nodes){
+      if(n.kind!==Kind.ATTACHED || !geoms[n.id]) continue;
+      const R = geoms[n.id];
+
+      if(n.mode===Mode.TOUCH){
+        if(intersectsArea(R,B)) viol[n.id].push("C1: TOUCH, але є перетин з площею.");
+        if(!touches(R,B)) viol[n.id].push("C1: TOUCH, але немає дотику.");
+      }else{
+        if(!intersectsArea(R,B)) viol[n.id].push("C1: INTERSECT, але немає перетину з площею.");
+      }
+
+      // C5: parallel layers can't intersect base
+      if(n.dir===base.dir && n.mode===Mode.INTERSECT){
+        viol[n.id].push("C5: паралельні шари до базового не можуть перетинати базовий (лише дотик).");
+      }
+
+      // C6: perpendicular intersect only long side
+      if(n.dir!==base.dir && n.mode===Mode.INTERSECT){
+        const ls = longSides(B);
+        if(!ls.has(n.side)) viol[n.id].push("C6: перпендикулярні можуть перетинати лише довшу сторону базового.");
+      }
+
+      // C2: intersect must cover base thickness-axis
+      if(n.mode===Mode.INTERSECT){
+        if(base.dir===Dir.H){
+          if(!(R.y1<=B.y1+EPS && R.y2>=B.y2-EPS)) viol[n.id].push("C2: не покриває всю товщину базового по Y.");
+        }else{
+          if(!(R.x1<=B.x1+EPS && R.x2>=B.x2-EPS)) viol[n.id].push("C2: не покриває всю товщину базового по X.");
+        }
+      }
+    }
+
+    // embedded rules C3 + C4
+    const children = {};
+    for(const n of nodes){
+      if(n.parent) (children[n.parent] ??= []).push(n);
+    }
+
+    for(const n of nodes){
+      if(n.kind!==Kind.EMBEDDED || !geoms[n.id] || !geoms[n.parent]) continue;
+      const R=geoms[n.id], P=geoms[n.parent];
+      if(!(P.x1<=R.x1+EPS && P.y1<=R.y1+EPS && R.x2<=P.x2+EPS && R.y2<=P.y2+EPS)){
+        viol[n.id].push("C3: embedded виходить за межі власника.");
+      }
+    }
+
+    for(const pid in children){
+      const emb = children[pid].filter(n=>n.kind===Kind.EMBEDDED && geoms[n.id]);
+      for(let i=0;i<emb.length;i++){
+        for(let j=i+1;j<emb.length;j++){
+          const a=geoms[emb[i].id], b=geoms[emb[j].id];
+          if(intersectsArea(a,b)){
+            viol[emb[i].id].push("C4: перетин з іншим embedded того ж власника.");
+            viol[emb[j].id].push("C4: перетин з іншим embedded того ж власника.");
+          }
+        }
+      }
+    }
+
+    return viol;
+  }
+
+  // --- render ---
+  function render(){
+    const geoms = buildGeoms();
+    const viol = validate(geoms);
+    renderList(viol);
+    renderEditor(viol);
+    renderSvg(geoms, viol);
+    renderViolText(viol);
+  }
+
+  function renderList(viol){
+    const el = document.getElementById("list");
+    el.innerHTML = "";
+    for(const n of nodes){
+      const bad = (viol[n.id]||[]).length>0;
+      const div = document.createElement("div");
+      div.className = "item" + (n.id===selectedId ? " active":"");
+      div.onclick = ()=>{ selectedId=n.id; render(); };
+      div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div><b>${n.id}</b> <span style="color:var(--muted)">(${n.kind}, dir=${n.dir})</span></div>
+        <span class="badge ${bad?'b-bad':'b-ok'}">${bad?('✖ '+viol[n.id].length):'OK'}</span>
+      </div>`;
+      el.appendChild(div);
+    }
+  }
+
+  function field(label, inputHtml){
+    return `<label>${label}</label>${inputHtml}`;
+  }
+
+  function renderEditor(viol){
+    const n = nodes.find(x=>x.id===selectedId) || nodes[0];
+    const ed = document.getElementById("editor");
+
+    const parentOptions = nodes
+      .filter(x=>x.id!==n.id)
+      .map(x=>`<option value="${x.id}" ${x.id===n.parent?'selected':''}>${x.id}</option>`)
+      .join("");
+
+    const kindSel = `
+      <select id="f_kind" ${n.kind===Kind.BASE?'disabled':''}>
+        <option value="base" ${n.kind===Kind.BASE?'selected':''}>base</option>
+        <option value="attached" ${n.kind===Kind.ATTACHED?'selected':''}>attached</option>
+        <option value="embedded" ${n.kind===Kind.EMBEDDED?'selected':''}>embedded</option>
+      </select>`;
+
+    const dirSel = `
+      <select id="f_dir">
+        <option value="H" ${n.dir===Dir.H?'selected':''}>H (шари горизонтальні)</option>
+        <option value="V" ${n.dir===Dir.V?'selected':''}>V (шари вертикальні)</option>
+      </select>`;
+
+    const baseLocked = (n.kind===Kind.BASE) ? `<div class="hint">Base зафіксований у (0,0). Змінюються тільки розміри.</div>` : "";
+
+    let extra = "";
+    if(n.kind===Kind.ATTACHED){
+      extra += field("side", `
+        <select id="f_side">
+          <option value="left" ${n.side===Side.LEFT?'selected':''}>left</option>
+          <option value="right" ${n.side===Side.RIGHT?'selected':''}>right</option>
+          <option value="top" ${n.side===Side.TOP?'selected':''}>top</option>
+          <option value="bottom" ${n.side===Side.BOTTOM?'selected':''}>bottom</option>
+        </select>`);
+      extra += field("mode", `
+        <select id="f_mode">
+          <option value="touch" ${n.mode===Mode.TOUCH?'selected':''}>touch</option>
+          <option value="intersect" ${n.mode===Mode.INTERSECT?'selected':''}>intersect</option>
+        </select>`);
+      extra += `<div class="row">
+        <div>${field("a (зсув уздовж сторони)", `<input id="f_a" type="number" step="0.01" value="${Number(n.a||0)}">`)}</div>
+        <div>${field("p (заход, лише для intersect)", `<input id="f_p" type="number" step="0.01" value="${Number(n.p||0)}">`)}</div>
+      </div>`;
+    }
+    if(n.kind===Kind.EMBEDDED){
+      extra += `<div class="row">
+        <div>${field("dx", `<input id="f_dx" type="number" step="0.01" value="${Number(n.dx||0)}">`)}</div>
+        <div>${field("dy", `<input id="f_dy" type="number" step="0.01" value="${Number(n.dy||0)}">`)}</div>
+      </div>`;
+    }
+
+    const vlist = (viol[n.id]||[]);
+    const vhtml = vlist.length
+      ? `<div style="margin-top:10px;padding:10px;border-radius:10px;border:1px solid rgba(255,77,77,.35);background:rgba(255,77,77,.08)">
+           <div style="color:var(--bad);font-weight:600;margin-bottom:6px">Порушення цього прямокутника</div>
+           <div class="hint">${vlist.map(x=>"• "+x).join("<br>")}</div>
+         </div>`
+      : `<div style="margin-top:10px;padding:10px;border-radius:10px;border:1px solid rgba(69,212,131,.35);background:rgba(69,212,131,.08)">
+           <div style="color:var(--ok);font-weight:600">Без порушень</div>
+         </div>`;
+
+    ed.innerHTML = `
+      ${field("id (не редагується у прототипі)", `<input value="${n.id}" disabled>`)}
+      ${field("kind", kindSel)}
+      ${field("parent", `<select id="f_parent" ${n.kind===Kind.BASE?'disabled':''}><option value="">—</option>${parentOptions}</select>`)}
+      ${field("dir", dirSel)}
+      <div class="row">
+        <div>${field("layers (мм/м у ваших одиницях), через кому", `<textarea id="f_layers">${n.layers}</textarea>`)}</div>
+      </div>
+      ${field("L (довжина)", `<input id="f_L" type="number" step="0.01" value="${Number(n.L||0)}">`)}
+      ${extra}
+      ${baseLocked}
+      ${vhtml}
+    `;
+
+    // bind
+    const bind = (id, fn) => {
+      const e = document.getElementById(id);
+      if(!e) return;
+      e.addEventListener("input", ()=>{ fn(e.value); render(); });
+      e.addEventListener("change", ()=>{ fn(e.value); render(); });
+    };
+
+    bind("f_kind", v=>{
+      if(n.kind===Kind.BASE) return;
+      n.kind = v;
+      // init defaults for params
+      if(n.kind===Kind.ATTACHED){
+        n.side ??= Side.RIGHT; n.mode ??= Mode.TOUCH; n.a ??= 0; n.p ??= 0;
+      }
+      if(n.kind===Kind.EMBEDDED){
+        n.dx ??= 0; n.dy ??= 0;
+      }
+      if(n.kind!==Kind.BASE && !n.parent) n.parent="B";
+    });
+    bind("f_parent", v=> n.parent = v || null);
+    bind("f_dir", v=> n.dir = v);
+    bind("f_layers", v=> n.layers = v);
+    bind("f_L", v=> n.L = Number(v)||0);
+    bind("f_side", v=> n.side = v);
+    bind("f_mode", v=> n.mode = v);
+    bind("f_a", v=> n.a = Number(v)||0);
+    bind("f_p", v=> n.p = Number(v)||0);
+    bind("f_dx", v=> n.dx = Number(v)||0);
+    bind("f_dy", v=> n.dy = Number(v)||0);
+  }
+
+  function renderSvg(geoms, viol){
+    const svg = document.getElementById("svg");
+    // clear (keep defs)
+    const defs = svg.querySelector("defs");
+    svg.innerHTML = "";
+    svg.appendChild(defs);
+
+    // bounds
+    const existing = nodes.filter(n=>geoms[n.id]);
+    if(existing.length===0) return;
+
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const n of existing){
+      const g=geoms[n.id];
+      minX=Math.min(minX,g.x1); minY=Math.min(minY,g.y1);
+      maxX=Math.max(maxX,g.x2); maxY=Math.max(maxY,g.y2);
+    }
+    const pad = 0.3*Math.max(1,(maxX-minX),(maxY-minY));
+    minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
+
+    svg.setAttribute("viewBox", `${minX} ${minY} ${maxX-minX} ${maxY-minY}`);
+
+    // grid
+    const grid = document.createElementNS(svg.namespaceURI,"g");
+    grid.setAttribute("opacity","0.22");
+    const step = Math.max(0.2, Math.min(1.0, (maxX-minX)/12));
+    for(let x=Math.floor(minX/step)*step; x<=maxX; x+=step){
+      const ln=document.createElementNS(svg.namespaceURI,"line");
+      ln.setAttribute("x1",x); ln.setAttribute("y1",minY);
+      ln.setAttribute("x2",x); ln.setAttribute("y2",maxY);
+      ln.setAttribute("stroke","#2a3f66"); ln.setAttribute("stroke-width","0.01");
+      grid.appendChild(ln);
+    }
+    for(let y=Math.floor(minY/step)*step; y<=maxY; y+=step){
+      const ln=document.createElementNS(svg.namespaceURI,"line");
+      ln.setAttribute("x1",minX); ln.setAttribute("y1",y);
+      ln.setAttribute("x2",maxX); ln.setAttribute("y2",y);
+      ln.setAttribute("stroke","#2a3f66"); ln.setAttribute("stroke-width","0.01");
+      grid.appendChild(ln);
+    }
+    svg.appendChild(grid);
+
+    // draw rects
+    for(const n of existing){
+      const g = geoms[n.id];
+      const bad = (viol[n.id]||[]).length>0;
+
+      const rect = document.createElementNS(svg.namespaceURI,"rect");
+      rect.setAttribute("x", g.x1);
+      rect.setAttribute("y", g.y1);
+      rect.setAttribute("width", g.w);
+      rect.setAttribute("height", g.h);
+      rect.setAttribute("rx", 0.03);
+      rect.setAttribute("ry", 0.03);
+
+      if(n.kind===Kind.BASE){
+        rect.setAttribute("fill","url(#hatchBase)");
+        rect.setAttribute("stroke","rgba(99,163,255,0.95)");
+      }else if(bad){
+        rect.setAttribute("fill","url(#hatchBad)");
+        rect.setAttribute("stroke","rgba(255,77,77,0.95)");
+      }else{
+        rect.setAttribute("fill","rgba(69,212,131,0.12)");
+        rect.setAttribute("stroke","rgba(69,212,131,0.85)");
+      }
+      rect.setAttribute("stroke-width","0.04");
+
+      rect.addEventListener("click", ()=>{
+        selectedId = n.id; render();
+      });
+
+      const title = document.createElementNS(svg.namespaceURI,"title");
+      const msgs = (viol[n.id]||[]);
+      title.textContent = msgs.length ? (n.id + ":\n" + msgs.join("\n")) : (n.id + ": OK");
+      rect.appendChild(title);
+
+      svg.appendChild(rect);
+
+      // draw layer boundaries
+      const layers = parseLayers(n.layers);
+      if(layers.length>1){
+        let acc=0;
+        for(let k=0;k<layers.length-1;k++){
+          acc += layers[k];
+          const ln=document.createElementNS(svg.namespaceURI,"line");
+          if(n.dir===Dir.H){
+            // layers stack in Y (horizontal stripes)
+            const y = g.y1 + acc;
+            ln.setAttribute("x1", g.x1); ln.setAttribute("y1", y);
+            ln.setAttribute("x2", g.x2); ln.setAttribute("y2", y);
+          }else{
+            // layers stack in X (vertical stripes)
+            const x = g.x1 + acc;
+            ln.setAttribute("x1", x); ln.setAttribute("y1", g.y1);
+            ln.setAttribute("x2", x); ln.setAttribute("y2", g.y2);
+          }
+          ln.setAttribute("stroke", bad ? "rgba(255,77,77,0.6)" : "rgba(230,238,252,0.35)");
+          ln.setAttribute("stroke-width","0.02");
+          svg.appendChild(ln);
+        }
+      }
+
+      // id label
+      const tx=document.createElementNS(svg.namespaceURI,"text");
+      tx.setAttribute("x", g.x1 + 0.03);
+      tx.setAttribute("y", g.y1 + 0.12);
+      tx.setAttribute("fill","#e6eefc");
+      tx.setAttribute("font-size","0.18");
+      tx.textContent = n.id;
+      svg.appendChild(tx);
+    }
+
+    // axes at (0,0)
+    const axg=document.createElementNS(svg.namespaceURI,"g");
+    const xax=document.createElementNS(svg.namespaceURI,"line");
+    xax.setAttribute("x1",minX); xax.setAttribute("y1",0);
+    xax.setAttribute("x2",maxX); xax.setAttribute("y2",0);
+    xax.setAttribute("stroke","#5a78b8"); xax.setAttribute("stroke-width","0.03"); xax.setAttribute("opacity","0.7");
+    const yax=document.createElementNS(svg.namespaceURI,"line");
+    yax.setAttribute("x1",0); yax.setAttribute("y1",minY);
+    yax.setAttribute("x2",0); yax.setAttribute("y2",maxY);
+    yax.setAttribute("stroke","#5a78b8"); yax.setAttribute("stroke-width","0.03"); yax.setAttribute("opacity","0.7");
+    axg.appendChild(xax); axg.appendChild(yax);
+    svg.appendChild(axg);
+  }
+
+  function renderViolText(viol){
+    const out = [];
+    for(const n of nodes){
+      const v = viol[n.id] || [];
+      if(v.length) out.push(`${n.id}: ${v.length}\n  - ${v.join("\n  - ")}\n`);
+    }
+    document.getElementById("violText").textContent = out.length ? out.join("\n") : "Порушень немає.";
+  }
+
+  // --- buttons ---
+  document.getElementById("addBtn").onclick = ()=>{
+    // auto id
+    let i=1;
+    while(nodes.some(n=>n.id===("R"+i))) i++;
+    const id="R"+i;
+
+    nodes.push({
+      id, kind:Kind.EMBEDDED, dir:Dir.V, layers:"0.10,0.05", L:1.0, parent:"B", dx:0.10, dy:0.10
+    });
+    selectedId=id;
+    render();
+  };
+
+  document.getElementById("delBtn").onclick = ()=>{
+    const n = nodes.find(x=>x.id===selectedId);
+    if(!n) return;
+    if(n.kind===Kind.BASE) return;
+    // remove children too (simple cascade)
+    const toDelete = new Set([n.id]);
+    let changed=true;
+    while(changed){
+      changed=false;
+      for(const x of nodes){
+        if(x.parent && toDelete.has(x.parent) && !toDelete.has(x.id)){
+          toDelete.add(x.id); changed=true;
+        }
+      }
+    }
+    nodes = nodes.filter(x=>!toDelete.has(x.id));
+    selectedId = nodes.find(x=>x.kind===Kind.BASE)?.id || nodes[0]?.id;
+    render();
+  };
+
+  render();
+</script>
+</body>
+</html>
