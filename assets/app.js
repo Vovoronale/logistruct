@@ -446,6 +446,28 @@ const DEFAULT_DEBUG_INTERACTION_STATE = {
 };
 
 const BG_TEST_STORAGE_KEY = "bgTestControls:lastState:v1";
+const I18N_SETTINGS_FILE_VERSION = 1;
+const I18N_DICTIONARY_FILE_VERSION = 1;
+const I18N_SETTINGS_PATH = "assets/config/i18n-settings.json";
+const I18N_DICTIONARY_PATH = "assets/i18n/dictionary.json";
+const SUPPORTED_LOCALES_FALLBACK = Object.freeze(["en", "uk", "pl", "nl", "ja"]);
+const DEFAULT_I18N_SETTINGS = Object.freeze({
+  version: I18N_SETTINGS_FILE_VERSION,
+  supportedLocales: [...SUPPORTED_LOCALES_FALLBACK],
+  defaultLocale: "en",
+  siteUrl: "https://logistruct.com/",
+  storageKey: "logistruct:locale:v1",
+});
+const DEFAULT_I18N_DICTIONARY = Object.freeze({
+  version: I18N_DICTIONARY_FILE_VERSION,
+  locales: [...SUPPORTED_LOCALES_FALLBACK],
+  entries: {},
+});
+let i18nSettings = { ...DEFAULT_I18N_SETTINGS };
+let i18nDictionary = { ...DEFAULT_I18N_DICTIONARY };
+let activeLocale = DEFAULT_I18N_SETTINGS.defaultLocale;
+let backgroundTestMode = false;
+let themeEditorMode = false;
 const SITE_SETTINGS_FILE_VERSION = 1;
 const SITE_SETTINGS_PATH = "assets/config/site-settings.json";
 const SUPPORTED_BACKGROUND_TYPES = new Set(["topology", "layered_sine_waves"]);
@@ -662,6 +684,290 @@ function parseThemeDocument(payload, fallbackTokens) {
     name,
     tokens: sanitizeThemeTokens(payload.tokens, fallbackTokens),
   };
+}
+
+function normalizeLocaleCode(value) {
+  if (typeof value !== "string") return null;
+  const raw = value.trim().toLowerCase();
+  if (!raw) return null;
+  const [base] = raw.split("-");
+  if (!base) return null;
+  if (base === "ua") return "uk";
+  return base;
+}
+
+function isSupportedLocale(locale, settings = i18nSettings) {
+  if (!locale) return false;
+  return Array.isArray(settings?.supportedLocales) && settings.supportedLocales.includes(locale);
+}
+
+function resolveLocale(
+  query = new URLSearchParams(window.location.search),
+  storage = window.localStorage,
+  nav = window.navigator,
+  settings = i18nSettings
+) {
+  const queryRaw = query.get("lang");
+  const queryLocale = normalizeLocaleCode(queryRaw);
+  if (queryLocale && isSupportedLocale(queryLocale, settings)) {
+    return {
+      locale: queryLocale,
+      source: "query",
+      shouldSyncUrl: queryRaw !== queryLocale,
+    };
+  }
+
+  try {
+    const stored = normalizeLocaleCode(storage.getItem(settings.storageKey));
+    if (stored && isSupportedLocale(stored, settings)) {
+      return {
+        locale: stored,
+        source: "storage",
+        shouldSyncUrl: true,
+      };
+    }
+  } catch {
+    // Ignore storage access issues in restricted contexts.
+  }
+
+  const browserCandidates = [
+    normalizeLocaleCode(nav.language),
+    ...((Array.isArray(nav.languages) ? nav.languages : [])
+      .map((item) => normalizeLocaleCode(item))
+      .filter(Boolean)),
+  ];
+  const browserLocale = browserCandidates.find((item) => isSupportedLocale(item, settings));
+  if (browserLocale) {
+    return {
+      locale: browserLocale,
+      source: "navigator",
+      shouldSyncUrl: true,
+    };
+  }
+
+  return {
+    locale: settings.defaultLocale,
+    source: "default",
+    shouldSyncUrl: true,
+  };
+}
+
+function parseI18nSettingsDocument(payload) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.version !== I18N_SETTINGS_FILE_VERSION) return null;
+  if (!Array.isArray(payload.supportedLocales) || !payload.supportedLocales.length) return null;
+  if (typeof payload.defaultLocale !== "string") return null;
+  if (typeof payload.siteUrl !== "string") return null;
+  if (typeof payload.storageKey !== "string" || !payload.storageKey.trim()) return null;
+
+  const supportedLocales = payload.supportedLocales
+    .map((item) => normalizeLocaleCode(item))
+    .filter(Boolean);
+  if (!supportedLocales.length) return null;
+  const defaultLocale = normalizeLocaleCode(payload.defaultLocale);
+  if (!defaultLocale || !supportedLocales.includes(defaultLocale)) return null;
+
+  let siteUrl = null;
+  try {
+    siteUrl = new URL(payload.siteUrl).toString();
+  } catch {
+    return null;
+  }
+
+  return {
+    version: I18N_SETTINGS_FILE_VERSION,
+    supportedLocales,
+    defaultLocale,
+    siteUrl,
+    storageKey: payload.storageKey.trim(),
+  };
+}
+
+function parseI18nDictionaryDocument(payload, settings = i18nSettings) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  if (payload.version !== I18N_DICTIONARY_FILE_VERSION) return null;
+  if (!payload.entries || typeof payload.entries !== "object" || Array.isArray(payload.entries)) return null;
+
+  const entries = {};
+  const locales = settings.supportedLocales;
+  for (const [key, value] of Object.entries(payload.entries)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const normalized = {};
+    for (const locale of locales) {
+      if (typeof value[locale] !== "string" || !value[locale].trim()) return null;
+      normalized[locale] = value[locale];
+    }
+    entries[key] = normalized;
+  }
+
+  return {
+    version: I18N_DICTIONARY_FILE_VERSION,
+    locales: [...locales],
+    entries,
+  };
+}
+
+async function loadI18nSettingsFromFile() {
+  try {
+    const response = await fetch(I18N_SETTINGS_PATH, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const parsed = parseI18nSettingsDocument(payload);
+    if (!parsed) throw new Error("Invalid i18n settings document");
+    return parsed;
+  } catch (error) {
+    console.warn(`[i18n] failed to load ${I18N_SETTINGS_PATH}, using fallback:`, error);
+    return { ...DEFAULT_I18N_SETTINGS };
+  }
+}
+
+async function loadI18nDictionaryFromFile(settings = i18nSettings) {
+  try {
+    const response = await fetch(I18N_DICTIONARY_PATH, { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    const parsed = parseI18nDictionaryDocument(payload, settings);
+    if (!parsed) throw new Error("Invalid i18n dictionary document");
+    return parsed;
+  } catch (error) {
+    console.warn(`[i18n] failed to load ${I18N_DICTIONARY_PATH}, using fallback:`, error);
+    return { ...DEFAULT_I18N_DICTIONARY, locales: [...settings.supportedLocales] };
+  }
+}
+
+function t(key, locale = activeLocale, fallbackText = "") {
+  const entry = i18nDictionary.entries?.[key];
+  if (!entry) {
+    console.warn(`[i18n] missing dictionary key "${key}"`);
+    return fallbackText || key;
+  }
+  if (typeof entry[locale] === "string" && entry[locale].trim()) return entry[locale];
+  if (typeof entry.en === "string" && entry.en.trim()) {
+    console.warn(`[i18n] missing locale "${locale}" for key "${key}", falling back to en`);
+    return entry.en;
+  }
+  console.warn(`[i18n] missing fallback value for key "${key}"`);
+  return fallbackText || key;
+}
+
+function syncLocaleInUrlPreservingParams(locale, { replace = true } = {}) {
+  const nextLocale = normalizeLocaleCode(locale);
+  if (!nextLocale || !isSupportedLocale(nextLocale)) return;
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.set("lang", nextLocale);
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  const next = `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`;
+  if (next === current) return;
+  if (replace) {
+    window.history.replaceState({}, "", nextUrl);
+  } else {
+    window.history.pushState({}, "", nextUrl);
+  }
+}
+
+function applyStaticTranslations() {
+  document.documentElement.lang = activeLocale;
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    const key = element.getAttribute("data-i18n");
+    if (!key) return;
+    element.textContent = t(key, activeLocale, element.textContent || "");
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach((element) => {
+    const key = element.getAttribute("data-i18n-html");
+    if (!key) return;
+    element.innerHTML = t(key, activeLocale, element.innerHTML || "");
+  });
+  document.querySelectorAll("[data-i18n-content]").forEach((element) => {
+    const key = element.getAttribute("data-i18n-content");
+    if (!key) return;
+    const fallback = element.getAttribute("content") || "";
+    element.setAttribute("content", t(key, activeLocale, fallback));
+  });
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+    const key = element.getAttribute("data-i18n-aria-label");
+    if (!key) return;
+    const fallback = element.getAttribute("aria-label") || "";
+    element.setAttribute("aria-label", t(key, activeLocale, fallback));
+  });
+}
+
+function buildLocalizedSeoUrl(locale) {
+  const siteRoot = new URL(i18nSettings.siteUrl);
+  const path = window.location.pathname || "/";
+  const url = new URL(path, siteRoot);
+  url.searchParams.set("lang", locale);
+  return url.toString();
+}
+
+function applySeoLocaleTags() {
+  const head = document.head;
+  if (!head) return;
+
+  const canonicalHref = buildLocalizedSeoUrl(activeLocale);
+  let canonical = head.querySelector('link[rel="canonical"]');
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.setAttribute("rel", "canonical");
+    head.appendChild(canonical);
+  }
+  canonical.setAttribute("href", canonicalHref);
+
+  head.querySelectorAll('link[rel="alternate"][data-i18n-hreflang="true"]').forEach((node) => {
+    node.remove();
+  });
+  i18nSettings.supportedLocales.forEach((locale) => {
+    const link = document.createElement("link");
+    link.setAttribute("rel", "alternate");
+    link.setAttribute("hreflang", locale);
+    link.setAttribute("href", buildLocalizedSeoUrl(locale));
+    link.setAttribute("data-i18n-hreflang", "true");
+    head.appendChild(link);
+  });
+  const xDefault = document.createElement("link");
+  xDefault.setAttribute("rel", "alternate");
+  xDefault.setAttribute("hreflang", "x-default");
+  xDefault.setAttribute("href", buildLocalizedSeoUrl(i18nSettings.defaultLocale));
+  xDefault.setAttribute("data-i18n-hreflang", "true");
+  head.appendChild(xDefault);
+}
+
+function persistLocale(locale) {
+  try {
+    window.localStorage.setItem(i18nSettings.storageKey, locale);
+  } catch {
+    // Ignore storage write errors in restricted browser contexts.
+  }
+}
+
+function initLanguageSwitcher() {
+  const select = document.getElementById("lang-switcher");
+  if (!(select instanceof HTMLSelectElement)) return;
+  if (isSupportedLocale(activeLocale)) select.value = activeLocale;
+  select.addEventListener("change", () => {
+    const nextLocale = normalizeLocaleCode(select.value);
+    if (!nextLocale || !isSupportedLocale(nextLocale) || nextLocale === activeLocale) return;
+    persistLocale(nextLocale);
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("lang", nextLocale);
+    window.location.assign(nextUrl.toString());
+  });
+}
+
+async function initI18n(searchParams = new URLSearchParams(window.location.search)) {
+  const loadedSettings = await loadI18nSettingsFromFile();
+  i18nSettings = loadedSettings;
+  i18nDictionary = await loadI18nDictionaryFromFile(loadedSettings);
+
+  const resolved = resolveLocale(searchParams, window.localStorage, window.navigator, loadedSettings);
+  activeLocale = resolved.locale;
+  persistLocale(activeLocale);
+  if (resolved.shouldSyncUrl) {
+    syncLocaleInUrlPreservingParams(activeLocale, { replace: true });
+  }
+
+  applyStaticTranslations();
+  applySeoLocaleTags();
+  initLanguageSwitcher();
 }
 
 function parseSiteSettingsDocument(payload) {
@@ -2697,7 +3003,7 @@ function setupBackgroundTestControls(backgroundEngine) {
 
   const panel = document.createElement("aside");
   panel.id = "bg-test-controls";
-  panel.setAttribute("aria-label", "Background test controls");
+  panel.setAttribute("aria-label", t("bgtest.aria.panel", activeLocale, "Background test controls"));
   const tabButtonsHtml = tabs
     .map(
       (tab, index) => `
@@ -2710,7 +3016,7 @@ function setupBackgroundTestControls(backgroundEngine) {
         aria-controls="bg-panel-${tab.id}"
         aria-selected="${index === 0 ? "true" : "false"}"
         tabindex="${index === 0 ? "0" : "-1"}"
-      >${tab.label}</button>
+      >${t(`bgtest.tab.${tab.id}`, activeLocale, tab.label)}</button>
     `
     )
     .join("");
@@ -2729,16 +3035,16 @@ function setupBackgroundTestControls(backgroundEngine) {
     .join("");
 
   panel.innerHTML = `
-    <h2>bgTest Controls</h2>
-    <p class="bg-test-subtitle">Live tuning for appearance, animation and interaction</p>
-    <div class="bg-test-presets" role="group" aria-label="Quality presets">
-      <button type="button" data-preset="high">High</button>
-      <button type="button" data-preset="medium">Medium</button>
-      <button type="button" data-preset="low">Low</button>
-      <button type="button" data-action="reset">Reset</button>
-      <button type="button" data-action="pause">Pause</button>
+    <h2>${t("bgtest.title", activeLocale, "bgTest Controls")}</h2>
+    <p class="bg-test-subtitle">${t("bgtest.subtitle", activeLocale, "Live tuning for appearance, animation and interaction")}</p>
+    <div class="bg-test-presets" role="group" aria-label="${t("bgtest.aria.presets", activeLocale, "Quality presets")}">
+      <button type="button" data-preset="high">${t("bgtest.preset.high", activeLocale, "High")}</button>
+      <button type="button" data-preset="medium">${t("bgtest.preset.medium", activeLocale, "Medium")}</button>
+      <button type="button" data-preset="low">${t("bgtest.preset.low", activeLocale, "Low")}</button>
+      <button type="button" data-action="reset">${t("bgtest.action.reset", activeLocale, "Reset")}</button>
+      <button type="button" data-action="pause">${t("bgtest.action.pause", activeLocale, "Pause")}</button>
     </div>
-    <div class="bg-test-tabs" role="tablist" aria-label="Control tabs">
+    <div class="bg-test-tabs" role="tablist" aria-label="${t("bgtest.aria.tabs", activeLocale, "Control tabs")}">
       ${tabButtonsHtml}
     </div>
     ${tabPanelsHtml}
@@ -2801,15 +3107,16 @@ function setupBackgroundTestControls(backgroundEngine) {
   controls.forEach((control) => {
     const row = document.createElement("label");
     row.className = "bg-test-control-row";
+    const controlLabel = t(`bgtest.control.${control.key}`, activeLocale, control.label);
     if (control.type === "color") {
       row.innerHTML = `
-        <span class="bg-test-control-name">${control.label}</span>
+        <span class="bg-test-control-name">${controlLabel}</span>
         <input type="color" />
         <output></output>
       `;
     } else {
       row.innerHTML = `
-        <span class="bg-test-control-name">${control.label}</span>
+        <span class="bg-test-control-name">${controlLabel}</span>
         <input type="range" min="${control.min}" max="${control.max}" step="${control.step}" />
         <output></output>
       `;
@@ -2860,7 +3167,9 @@ function setupBackgroundTestControls(backgroundEngine) {
 
   function syncPauseLabel() {
     if (!pauseButton) return;
-    pauseButton.textContent = backgroundEngine.isPaused() ? "Resume" : "Pause";
+    pauseButton.textContent = backgroundEngine.isPaused()
+      ? t("bgtest.action.resume", activeLocale, "Resume")
+      : t("bgtest.action.pause", activeLocale, "Pause");
   }
 
   function syncFromState() {
@@ -2918,6 +3227,70 @@ function setupThemeEditorControls(initialThemeName = "custom") {
     { id: "components", label: "Components" },
     { id: "canvas", label: "Canvas" },
   ];
+  const tabI18nKeyById = {
+    palette: "theme.tab.palette",
+    "surface-grid": "theme.tab.surfaceGrid",
+    components: "theme.tab.components",
+    canvas: "theme.tab.canvas",
+  };
+  const controlI18nKeyByToken = {
+    "--bg": "theme.control.bg",
+    "--bg-soft": "theme.control.bgSoft",
+    "--bg-radial-start": "theme.control.bgRadialStart",
+    "--bg-radial-end": "theme.control.bgRadialEnd",
+    "--text": "theme.control.text",
+    "--text-dim": "theme.control.textDim",
+    "--accent": "theme.control.accent",
+    "--accent-warm": "theme.control.accentWarm",
+    "--danger": "theme.control.danger",
+    "--surface": "theme.control.surface",
+    "--surface-strong": "theme.control.surfaceStrong",
+    "--line": "theme.control.line",
+    "--bg-grid-rgb": "theme.control.gridColor",
+    "--bg-grid-opacity": "theme.control.gridOpacity",
+    "--bg-grid-size": "theme.control.gridSize",
+    "--shadow": "theme.control.sectionShadow",
+    "--header-bg": "theme.control.headerBackground",
+    "--nav-hover-bg": "theme.control.navHover",
+    "--control-panel-border": "theme.control.panelBorder",
+    "--control-panel-bg": "theme.control.panelBackground",
+    "--control-panel-shadow": "theme.control.panelShadow",
+    "--control-btn-border": "theme.control.controlButtonBorder",
+    "--control-btn-bg": "theme.control.controlButtonBg",
+    "--control-tab-border": "theme.control.controlTabBorder",
+    "--control-tab-bg": "theme.control.controlTabBg",
+    "--theme-tab-active-bg": "theme.control.themeTabActiveBg",
+    "--theme-tab-active-border": "theme.control.themeTabActiveBorder",
+    "--bg-test-tab-active-bg": "theme.control.bgTestTabActiveBg",
+    "--bg-test-tab-active-border": "theme.control.bgTestTabActiveBorder",
+    "--control-input-border": "theme.control.controlInputBorder",
+    "--control-input-bg": "theme.control.controlInputBg",
+    "--section-gradient-start": "theme.control.sectionGradientStart",
+    "--section-gradient-mid": "theme.control.sectionGradientMid",
+    "--section-gradient-end": "theme.control.sectionGradientEnd",
+    "--btn-primary-mid": "theme.control.primaryMid",
+    "--btn-primary-end": "theme.control.primaryEnd",
+    "--btn-primary-text": "theme.control.primaryText",
+    "--btn-primary-shadow": "theme.control.primaryShadow",
+    "--btn-ghost-border": "theme.control.ghostBorder",
+    "--btn-ghost-bg": "theme.control.ghostBackground",
+    "--card-active-border": "theme.control.cardActiveBorder",
+    "--map-shell-bg": "theme.control.mapShellBg",
+    "--map-bg-fill": "theme.control.mapBackgroundFill",
+    "--map-region-fill": "theme.control.mapRegionFill",
+    "--map-region-stroke": "theme.control.mapRegionStroke",
+    "--map-node-pulse-fill": "theme.control.mapNodePulseFill",
+    "--map-node-pulse-stroke": "theme.control.mapNodePulseStroke",
+    "--route-gradient-start": "theme.control.routeGradientStart",
+    "--route-gradient-end": "theme.control.routeGradientEnd",
+    "--canvas-bound-point": "theme.control.boundPoint",
+    "--canvas-free-point": "theme.control.freePoint",
+    "--canvas-topology-link": "theme.control.topologyLink",
+    "--canvas-free-link": "theme.control.freeLink",
+    "--canvas-cross-link": "theme.control.crossLink",
+    "--canvas-gradient-start": "theme.control.gradientStart",
+    "--canvas-gradient-end": "theme.control.gradientEnd",
+  };
   const controls = [
     { tab: "palette", key: "--bg", label: "Background", type: "color" },
     { tab: "palette", key: "--bg-soft", label: "Background Soft", type: "color" },
@@ -3242,7 +3615,7 @@ function setupThemeEditorControls(initialThemeName = "custom") {
 
   const panel = document.createElement("aside");
   panel.id = "theme-editor-controls";
-  panel.setAttribute("aria-label", "Theme editor controls");
+  panel.setAttribute("aria-label", t("theme.aria.panel", activeLocale, "Theme editor controls"));
 
   const tabButtonsHtml = tabs
     .map(
@@ -3256,7 +3629,7 @@ function setupThemeEditorControls(initialThemeName = "custom") {
         aria-controls="theme-panel-${tab.id}"
         aria-selected="${index === 0 ? "true" : "false"}"
         tabindex="${index === 0 ? "0" : "-1"}"
-      >${tab.label}</button>
+      >${t(tabI18nKeyById[tab.id], activeLocale, tab.label)}</button>
     `
     )
     .join("");
@@ -3276,15 +3649,15 @@ function setupThemeEditorControls(initialThemeName = "custom") {
     .join("");
 
   panel.innerHTML = `
-    <h2>Theme Editor</h2>
-    <p class="theme-editor-subtitle">Tune tokens while previewing full page layout</p>
-    <div class="theme-editor-actions" role="group" aria-label="Theme actions">
-      <button type="button" data-action="theme-dark">Dark</button>
-      <button type="button" data-action="theme-light">Light</button>
-      <button type="button" data-action="save">Save Theme File</button>
-      <button type="button" data-action="reset">Reset Theme</button>
+    <h2>${t("theme.title", activeLocale, "Theme Editor")}</h2>
+    <p class="theme-editor-subtitle">${t("theme.subtitle", activeLocale, "Tune tokens while previewing full page layout")}</p>
+    <div class="theme-editor-actions" role="group" aria-label="${t("theme.aria.actions", activeLocale, "Theme actions")}">
+      <button type="button" data-action="theme-dark">${t("theme.action.dark", activeLocale, "Dark")}</button>
+      <button type="button" data-action="theme-light">${t("theme.action.light", activeLocale, "Light")}</button>
+      <button type="button" data-action="save">${t("theme.action.save", activeLocale, "Save Theme File")}</button>
+      <button type="button" data-action="reset">${t("theme.action.reset", activeLocale, "Reset Theme")}</button>
     </div>
-    <div class="theme-editor-tabs" role="tablist" aria-label="Theme editor tabs">
+    <div class="theme-editor-tabs" role="tablist" aria-label="${t("theme.aria.tabs", activeLocale, "Theme editor tabs")}">
       ${tabButtonsHtml}
     </div>
     ${tabPanelsHtml}
@@ -3418,17 +3791,18 @@ function setupThemeEditorControls(initialThemeName = "custom") {
     const row = document.createElement("label");
     row.className = "theme-editor-control-row";
     const valueId = `theme-control-${control.key.replace(/[^a-z0-9_-]+/gi, "-")}`;
+    const controlLabel = t(controlI18nKeyByToken[control.key], activeLocale, control.label);
 
     if (control.type === "color") {
       row.innerHTML = `
-        <span class="theme-editor-control-name">${control.label}</span>
+        <span class="theme-editor-control-name">${controlLabel}</span>
         <input id="${valueId}" class="theme-editor-color-picker" type="color" />
         <input class="theme-editor-color-value" type="text" />
       `;
     } else if (control.type === "rgba" || control.type === "grid-rgb") {
       row.classList.add("theme-editor-control-row-color-text");
       row.innerHTML = `
-        <span class="theme-editor-control-name">${control.label}</span>
+        <span class="theme-editor-control-name">${controlLabel}</span>
         <span class="theme-editor-color-combo">
           <input id="${valueId}" class="theme-editor-color-picker" type="color" />
           <input class="theme-editor-color-value" type="text" placeholder="${control.placeholder || ""}" />
@@ -3437,7 +3811,7 @@ function setupThemeEditorControls(initialThemeName = "custom") {
       `;
     } else if (control.type === "range") {
       row.innerHTML = `
-        <span class="theme-editor-control-name">${control.label}</span>
+        <span class="theme-editor-control-name">${controlLabel}</span>
         <input
           id="${valueId}"
           type="range"
@@ -3449,7 +3823,7 @@ function setupThemeEditorControls(initialThemeName = "custom") {
       `;
     } else {
       row.innerHTML = `
-        <span class="theme-editor-control-name">${control.label}</span>
+        <span class="theme-editor-control-name">${controlLabel}</span>
         <input id="${valueId}" type="text" placeholder="${control.placeholder || ""}" />
         <output></output>
       `;
@@ -3644,26 +4018,34 @@ async function bootstrapBackground(
   return engine;
 }
 
-const searchParams = new URLSearchParams(window.location.search);
-let backgroundTestMode = isBackgroundTestMode(searchParams);
-let themeEditorMode = isThemeEditorMode(searchParams);
-if (backgroundTestMode && themeEditorMode) {
-  console.warn("[mode] Ignoring both special modes because bgTest=1 and themeEditor=1 are both set.");
-  backgroundTestMode = false;
-  themeEditorMode = false;
-}
-const themeParamName = getThemeParamName(searchParams);
+async function initApp() {
+  const initialSearchParams = new URLSearchParams(window.location.search);
+  await initI18n(initialSearchParams);
 
-applyBackgroundTestMode(backgroundTestMode);
-applyThemeEditorMode(themeEditorMode);
-runIntroSequence({ backgroundTestMode, themeEditorMode });
-bootstrapBackground(backgroundTestMode, themeEditorMode, themeParamName)
-  .then(() => {
-    if (backgroundTestMode) return;
-    onIntroComplete(() => {
-      animateCounters();
-    });
-  })
-  .catch((error) => {
+  const searchParams = new URLSearchParams(window.location.search);
+  backgroundTestMode = isBackgroundTestMode(searchParams);
+  themeEditorMode = isThemeEditorMode(searchParams);
+  if (backgroundTestMode && themeEditorMode) {
+    console.warn("[mode] Ignoring both special modes because bgTest=1 and themeEditor=1 are both set.");
+    backgroundTestMode = false;
+    themeEditorMode = false;
+  }
+  const themeParamName = getThemeParamName(searchParams);
+
+  applyBackgroundTestMode(backgroundTestMode);
+  applyThemeEditorMode(themeEditorMode);
+  runIntroSequence({ backgroundTestMode, themeEditorMode });
+
+  try {
+    await bootstrapBackground(backgroundTestMode, themeEditorMode, themeParamName);
+    if (!backgroundTestMode) {
+      onIntroComplete(() => {
+        animateCounters();
+      });
+    }
+  } catch (error) {
     console.warn("[bootstrap] failed:", error);
-  });
+  }
+}
+
+void initApp();
