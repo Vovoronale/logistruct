@@ -15,6 +15,7 @@ test("demo site files exist", () => {
   read("index.html");
   read("assets/styles.css");
   read("assets/app.js");
+  read("assets/motion-profile.js");
   read("assets/background-templates.js");
   read("assets/vector-template-loader.js");
   read("assets/config/site-settings.json");
@@ -203,6 +204,11 @@ test("index.html includes single-source intro contract and initial intro phase",
     "Primary brand text element is required for single-source intro"
   );
   assert.equal(
+    html.includes('class="brand-mark"'),
+    false,
+    "Decorative L/S brand mark should not be rendered"
+  );
+  assert.equal(
     html.includes('id="intro-sequence"'),
     false,
     "Intro overlay container must be removed in single-source intro"
@@ -217,11 +223,11 @@ test("index.html includes single-source intro contract and initial intro phase",
 test("index links static assets", () => {
   const html = read("index.html");
   assert.ok(
-    html.includes('href="assets/styles.css"'),
+    html.includes('href="assets/styles.css?v=layout-review-1"'),
     "styles.css link is missing"
   );
   assert.ok(
-    html.includes('src="assets/app.js"') && html.includes('type="module"'),
+    html.includes('src="assets/app.js?v=layout-review-1"') && html.includes('type="module"'),
     "app.js script include is missing"
   );
 });
@@ -340,10 +346,19 @@ test("body uses Segoe UI first and accidental light layout restores full-width f
     false,
     "Desktop framing should no longer depend on var(--max-width)"
   );
+  const tabletBlock = css.match(
+    /@media \(max-width: 1020px\)\s*\{([\s\S]*?)\r?\n\}\r?\n\r?\n@media \(max-width: 860px\)/
+  );
+  assert.ok(tabletBlock, "Tablet media block should remain before the hero collapse block");
+  assert.equal(
+    tabletBlock[1].includes(".hero-section"),
+    false,
+    "Hero metrics should stay in the right column around 881px instead of collapsing at 1020px"
+  );
   assert.match(
     css,
-    /@media \(max-width: 1020px\)\s*\{[\s\S]*\.hero-section\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
-    "Tablet and down layouts must keep the single-column hero fallback"
+    /@media \(max-width: 860px\)\s*\{[\s\S]*\.hero-section\s*\{[\s\S]*grid-template-columns:\s*1fr;/,
+    "Hero should only collapse below the reviewed tablet width"
   );
 });
 
@@ -433,6 +448,11 @@ test("menu intro staging keeps nav bold and language last", () => {
   );
   assert.match(
     css,
+    /\.lang-switcher select\s*\{[\s\S]*transform:\s*translateY\(1px\);/,
+    "Language select should sit on the same optical baseline as nav links"
+  );
+  assert.match(
+    css,
     /body\[data-intro-phase="nav"\] \.main-nav,[\s\S]*body\[data-intro-phase="reveal"\] \.main-nav\s*\{[\s\S]*transition-delay:\s*var\(--menu-nav-delay-ms\);/,
     "Main nav should keep its reveal but start after the shell"
   );
@@ -498,6 +518,14 @@ test("runtime script includes adaptive motion logic", () => {
     js.includes("downsampleTemplateForProfile"),
     "Profile-aware downsampling branch is required"
   );
+  assert.ok(
+    js.includes("motion-profile.js") && js.includes("resolveMotionSettings"),
+    "Runtime must use shared capability-based motion settings"
+  );
+  assert.ok(
+    js.includes("data-motion-mode") || js.includes("dataset.motionMode"),
+    "Runtime must expose effective motion mode to CSS"
+  );
 });
 
 test("runtime script includes intro timeline orchestration and completion event", () => {
@@ -531,8 +559,9 @@ test("runtime script includes intro timeline orchestration and completion event"
   assert.ok(
     js.includes("buildBrandCenterTransform") &&
       js.includes("applyBrandIntroStartState") &&
+      js.includes("animateBrandIntroToHeader") &&
       js.includes("clearBrandInlineIntroState"),
-    "Intro runtime should use single-source brand transform helpers"
+    "Intro runtime should use single-source brand transform helpers with stable animation"
   );
   assert.equal(
     js.includes("lockIntroLabelToBrandTarget"),
@@ -748,6 +777,15 @@ test("styles define design system primitives", () => {
   assert.match(css, /(^|\n):root\s*\{/, "styles.css must start a valid :root token block");
   assert.ok(css.includes("--bg"), "Background color token is required");
   assert.ok(css.includes("@keyframes"), "Animation keyframes are required");
+  assert.ok(
+    css.includes('html[data-motion-mode="reduced"]'),
+    "Reduced animation compression should be controlled by runtime motion mode"
+  );
+  assert.equal(
+    css.includes("@media (prefers-reduced-motion: reduce)"),
+    false,
+    "Reduced-motion media query must not globally suppress capability-based animation"
+  );
 });
 
 test("styles include intro phase state contracts and nav expand rules", () => {
@@ -789,9 +827,8 @@ test("styles include intro phase state contracts and nav expand rules", () => {
     "Nav phase should explicitly reveal desktop navigation"
   );
   assert.ok(
-    css.includes('data-intro-phase="nav"] .brand-mark') &&
-      css.includes('data-intro-phase="reveal"] .brand-mark'),
-    "Brand mark should remain hidden through nav and reveal after nav step"
+    !css.includes(".brand-mark"),
+    "Decorative brand mark styles should be removed with the L/S element"
   );
 });
 

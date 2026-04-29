@@ -7,6 +7,7 @@ import {
   loadSvgTemplate,
   downsampleTemplateForProfile,
 } from "./vector-template-loader.js";
+import { resolveMotionSettings } from "./motion-profile.js";
 
 const canvas = document.getElementById("bg-canvas");
 const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -140,17 +141,7 @@ function onIntroComplete(callback) {
 }
 
 function selectIntroMode() {
-  if (prefersReduced.matches) return "reduced";
-
-  const profile = getMotionProfile();
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const isConstrainedConnection = Boolean(
-    connection &&
-      (connection.saveData || /(^|-)2g$/i.test(String(connection.effectiveType || "")))
-  );
-
-  if (profile === "low" || isConstrainedConnection) return "short";
-  return "full";
+  return getActiveMotionSettings().introMode;
 }
 
 function buildBrandCenterTransform(brandTextEl, centerScale = INTRO_BRAND_CENTER_SCALE) {
@@ -162,8 +153,8 @@ function buildBrandCenterTransform(brandTextEl, centerScale = INTRO_BRAND_CENTER
   const viewportCenterY = window.innerHeight / 2;
   const targetCenterX = targetRect.left + targetRect.width / 2;
   const targetCenterY = targetRect.top + targetRect.height / 2;
-  const dx = viewportCenterX - targetCenterX;
-  const dy = viewportCenterY - targetCenterY;
+  const dx = Math.round((viewportCenterX - targetCenterX) * 100) / 100;
+  const dy = Math.round((viewportCenterY - targetCenterY) * 100) / 100;
   const scale = clamp(Number(centerScale) || INTRO_BRAND_CENTER_SCALE, 1, 3.5);
   return `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
 }
@@ -175,9 +166,44 @@ function applyBrandIntroStartState(brandTextEl, centerScale = INTRO_BRAND_CENTER
   brandTextEl.style.transition = "none";
   brandTextEl.style.transformOrigin = "center center";
   brandTextEl.style.willChange = "transform";
+  brandTextEl.style.backfaceVisibility = "hidden";
   brandTextEl.style.transform = startTransform;
   void brandTextEl.getBoundingClientRect();
   return true;
+}
+
+async function animateBrandIntroToHeader(brandTextEl, durationMs) {
+  if (!brandTextEl) return;
+  const endTransform = "translate3d(0, 0, 0) scale(1)";
+  const startTransform =
+    brandTextEl.style.transform || window.getComputedStyle(brandTextEl).transform || endTransform;
+  const duration = Math.max(0, Math.round(durationMs));
+
+  if (typeof brandTextEl.animate !== "function") {
+    brandTextEl.style.transition = `transform ${duration}ms ${INTRO_BRAND_MOVE_EASING}`;
+    brandTextEl.style.transform = endTransform;
+    await waitForMs(duration);
+    return;
+  }
+
+  brandTextEl.style.transition = "none";
+  let animation = null;
+  try {
+    animation = brandTextEl.animate(
+      [{ transform: startTransform }, { transform: endTransform }],
+      {
+        duration,
+        easing: INTRO_BRAND_MOVE_EASING,
+        fill: "both",
+      }
+    );
+    await animation.finished;
+  } catch {
+    await waitForMs(duration);
+  } finally {
+    brandTextEl.style.transform = endTransform;
+    if (animation) animation.cancel();
+  }
 }
 
 function clearBrandInlineIntroState(brandTextEl) {
@@ -186,6 +212,7 @@ function clearBrandInlineIntroState(brandTextEl) {
   brandTextEl.style.removeProperty("transition");
   brandTextEl.style.removeProperty("will-change");
   brandTextEl.style.removeProperty("transform-origin");
+  brandTextEl.style.removeProperty("backface-visibility");
 }
 
 async function runIntroSequence({ backgroundTestMode = false, themeEditorMode = false } = {}) {
@@ -273,9 +300,7 @@ async function runIntroSequence({ backgroundTestMode = false, themeEditorMode = 
 
     setIntroPhase(INTRO_PHASES.MOVE);
     await waitForNextFrame();
-    brandText.style.transition = `transform ${timing.moveMs}ms ${INTRO_BRAND_MOVE_EASING}`;
-    brandText.style.transform = "translate3d(0, 0, 0) scale(1)";
-    await waitForMs(timing.moveMs);
+    await animateBrandIntroToHeader(brandText, timing.moveMs);
 
     setIntroPhase(INTRO_PHASES.NAV);
     await waitForMs(skipDesktopNavExpand ? 0 : timing.navMs);
@@ -468,6 +493,7 @@ let i18nDictionary = { ...DEFAULT_I18N_DICTIONARY };
 let activeLocale = DEFAULT_I18N_SETTINGS.defaultLocale;
 let backgroundTestMode = false;
 let themeEditorMode = false;
+let activeMotionSettings = null;
 const SITE_SETTINGS_FILE_VERSION = 1;
 const SITE_SETTINGS_PATH = "assets/config/site-settings.json";
 const SUPPORTED_BACKGROUND_TYPES = new Set(["topology", "layered_sine_waves"]);
@@ -1017,13 +1043,40 @@ async function loadThemeFromFile(themeName, fallbackTokens) {
   }
 }
 
+function getNavigatorConnection() {
+  return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+}
+
+function readMotionSettings(searchParams = new URLSearchParams(window.location.search)) {
+  return resolveMotionSettings({
+    searchParams,
+    hardwareConcurrency: navigator.hardwareConcurrency || 4,
+    deviceMemory: navigator.deviceMemory || 4,
+    connection: getNavigatorConnection(),
+    prefersReducedMotion: prefersReduced.matches,
+  });
+}
+
+function applyMotionSettings(settings) {
+  if (!settings) return;
+  document.documentElement.dataset.motionMode = settings.motionMode;
+  if (document.body) {
+    document.body.dataset.motionMode = settings.motionMode;
+  }
+}
+
+function refreshMotionSettings(searchParams = new URLSearchParams(window.location.search)) {
+  activeMotionSettings = readMotionSettings(searchParams);
+  applyMotionSettings(activeMotionSettings);
+  return activeMotionSettings;
+}
+
+function getActiveMotionSettings() {
+  return activeMotionSettings || refreshMotionSettings();
+}
+
 function getMotionProfile() {
-  if (prefersReduced.matches) return "reduced";
-  const cores = navigator.hardwareConcurrency || 4;
-  const memory = navigator.deviceMemory || 4;
-  if (cores >= 8 && memory >= 8) return "high";
-  if (cores >= 6 && memory >= 4) return "medium";
-  return "low";
+  return getActiveMotionSettings().profile;
 }
 
 function clamp(v, min, max) {
@@ -2454,6 +2507,7 @@ function initBackground(canvasEl, config, initialTemplates) {
   }
 
   function handleMotionPreferenceChange() {
+    refreshMotionSettings();
     setQuality(getMotionProfile());
   }
 
@@ -2628,6 +2682,7 @@ function initLayeredSineWavesBackground(canvasEl) {
   }
 
   function handleMotionPreferenceChange() {
+    refreshMotionSettings();
     setQuality(getMotionProfile());
   }
 
@@ -4032,6 +4087,7 @@ async function initApp() {
   }
   const themeParamName = getThemeParamName(searchParams);
 
+  refreshMotionSettings(searchParams);
   applyBackgroundTestMode(backgroundTestMode);
   applyThemeEditorMode(themeEditorMode);
   runIntroSequence({ backgroundTestMode, themeEditorMode });
